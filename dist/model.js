@@ -1,4 +1,4 @@
-export const PITCH=.025, BAY=.714, CENTERS=[-.714,0,.714];
+export const PITCH=.048, GRID=[60,60,24], ORIGIN=[-1.44,.01,0];
 export const MODULES={
  panel:{name:'平面展陈',en:'DISPLAY',code:'01',w:.700,h:.550,d:.006,kind:'展陈',anchor:'V3 夹持节点 × 4',level:'沿用节点',intro:'保留四角框选的视觉语言，夹持照片、海报与薄板作品。',mechanism:'两根圆导柱调节夹持深度；下部承托台阶接住底边，上部节点限制前倾。节点背部挂钩始终向下。',parts:'Ø6 圆轴、M3 锁紧件、轴尾止挡、裁切软垫。长度与配合需按实体复核。',note:'展示 700 × 550 × 6 mm 板材；2–12 mm 厚度仍属拟定验证范围。',mount:4,draw:'frame',power:false},
  cabinet:{name:'透明展柜',en:'VITRINE',code:'02',w:.660,h:.500,d:.280,kind:'展陈',anchor:'承力背架 × 1 + 挂接点 × 4',level:'新增承力结构',intro:'为模型、工艺品与航线纪念物提供可关闭的展示空间。',mechanism:'柜体先连接刚性背架，背架跨两根梯柱，上下四点挂接并独立防抬。柜门限位、闭锁，底板前沿设止滑挡边。',parts:'金属挂钩、贯穿紧固件、柜门铰链、限位件、机械门锁、透明板材。',note:'不能由现有伸缩圆轴悬挑承重；需要背架及整柜载荷试验。',mount:4,draw:'cabinet',power:false},
@@ -9,15 +9,25 @@ export const MODULES={
  worktop:{name:'折叠活动台',en:'WORKTOP',code:'07',w:.650,h:.100,d:.420,kind:'服务',anchor:'承力背架 × 1 + 锁定支撑臂 × 2',level:'新增承力结构',intro:'为亲子手作、材料体验和临时讲解提供短时操作面。',mechanism:'台面通过铰链连接背架；展开后支撑臂机械锁定。收拢时台面竖起贴近梯柱。',parts:'铰链、带正向锁定的支撑臂、贯穿螺钉、收拢锁扣。',note:'收拢状态也占用高度；不以摩擦或磁吸替代承力锁定。',mount:4,draw:'worktop',power:false},
  acoustic:{name:'软质界面',en:'SOFT PANEL',code:'08',w:.650,h:.700,d:.045,kind:'氛围',anchor:'轻框背板 + 挂接点 × 4',level:'新增接口件',intro:'在阅读、休息与小组活动中形成柔和的墙面界面。',mechanism:'可拆面料包覆轻框与内芯，再通过背板连接梯柱。面层独立更换，不改变挂接结构。',parts:'轻框、紧固件、包覆面料、内芯与可拆连接件。',note:'吸声效果及材料阻燃性能需实测；本版只演示布局与色彩。',mount:4,draw:'acoustic',power:false}
 };
-const item=(id,type,bay,y,state=0)=>({id,type,bay,y,state,color:'#3158e8',intensity:65,temperature:3200});
+
+MODULES.block={name:'基础方块',en:'UNIT / 48',code:'00',kind:'展陈',draw:'frame',level:'48 mm 基础单元',anchor:'标准化背部接口（待开发）',intro:'最小 1 × 1 × 1 格单元，可相邻拼接、向外叠放，探索组合关系。',mechanism:'统一外包络为 48 mm 立方体。后接口连接适配背板，侧接口用于模块组合；内部结构仍需按 V3 重新校核。',parts:'拟用 M3 紧固件、定位销及防脱锁定件，规格待打样。',note:'叠放仅表达空间组合；悬挑连接与承载尚未验证。',mount:1};
+const sizes={block:[1,1,1],panel:[15,12,1],cabinet:[14,11,6],lamp:[4,4,4],scent:[3,5,3],shelf:[14,3,6],sign:[6,4,1],worktop:[14,10,10],acoustic:[14,15,1]};
+for(const [k,m] of Object.entries(MODULES)){m.cells=sizes[k];[m.w,m.h,m.d]=m.cells.map(v=>v*PITCH);}
+MODULES.panel.note='15 × 12 × 1 格为占位包络，展板本体仍为薄板；夹持厚度与结构需要打样。';
+MODULES.worktop.note='预留 14 × 10 × 10 格活动包络，包含折叠路径。收拢后仍保留该空间，避免其他模块阻碍展开。';
+MODULES.cabinet.note+=' 开门时额外预留前方 14 格深度的转动包络；深度总范围为 24 格。';
+const item=(id,type,gx,gy,state=0,gz=0)=>({id,type,gx,gy,gz,state,color:'#3158e8',intensity:65,temperature:3200});
 export const PRESETS=[
- {id:'gallery',time:'10:00',name:'航线展览',tag:'看见 / 发现',desc:'平面作品与实物同墙展示，灯具集中照亮展品。',ambient:'day',items:[item('a','panel',0,1.55),item('b','cabinet',1,1.35),item('c','panel',2,1.55),item('d','lamp',0,2.2,1),item('e','lamp',1,2.2,1),item('f','sign',2,.7)]},
- {id:'workshop',time:'14:00',name:'亲子工作坊',tag:'动手 / 共创',desc:'操作台展开，层板归置材料；公共活动保持无香。',ambient:'day',items:[item('a','worktop',0,.85,1),item('b','worktop',2,.85,1),item('c','shelf',1,1.2),item('d','sign',0,1.8),item('e','lamp',2,2.5,1),item('f','acoustic',1,1.9)]},
- {id:'market',time:'17:00',name:'航海小市集',tag:'交换 / 相遇',desc:'封闭展柜与开放层板组合，呈现不同的展示与取放方式。',ambient:'day',items:[item('a','cabinet',0,1.7),item('b','shelf',0,1.05),item('c','cabinet',2,1.7),item('d','shelf',2,1.05),item('e','sign',1,2.3),item('f','worktop',1,.75,1)]},
- {id:'lounge',time:'20:00',name:'晚间休憩',tag:'阅读 / 放松',desc:'降低灯光亮度，软质面板营造安静界面；香氛可按需开启。',ambient:'night',items:[item('a','acoustic',0,1.5),item('b','acoustic',2,1.5),item('c','lamp',0,2.1,1),item('d','lamp',2,2.1,1),item('e','scent',1,.5,0),item('f','shelf',1,.95),item('g','sign',1,2.4)]}
+{id:'gallery',time:'10:00',name:'航线展览',tag:'看见 / 发现',desc:'48 mm 网格内组合平面作品与实物展柜；灯具独立供电。',ambient:'day',items:[item('a','panel',3,26),item('b','cabinet',23,23),item('c','panel',42,26),item('d','lamp',8,45,1),item('e','lamp',28,45,1),item('f','sign',46,13)]},
+{id:'workshop',time:'14:00',name:'亲子工作坊',tag:'动手 / 共创',desc:'活动台预留完整折叠空间；同一套网格容纳材料、照明与软质面板。',ambient:'day',items:[item('a','worktop',3,16,1),item('b','worktop',43,16,1),item('c','shelf',23,24),item('d','sign',7,36),item('e','lamp',47,49,1),item('f','acoustic',23,34)]},
+{id:'market',time:'17:00',name:'航海小市集',tag:'交换 / 相遇',desc:'展柜与层板按整数格重新组合，改变展示和取放方式。',ambient:'day',items:[item('a','cabinet',3,30),item('b','shelf',3,20),item('c','cabinet',43,30),item('d','shelf',43,20),item('e','sign',27,46),item('f','worktop',23,14,1)]},
+{id:'lounge',time:'20:00',name:'晚间休憩',tag:'阅读 / 放松',desc:'降低照明亮度，以软质面板组织休憩界面；香氛默认关闭。',ambient:'night',items:[item('a','acoustic',3,24),item('b','acoustic',43,24),item('c','lamp',8,43,1),item('d','lamp',48,43,1),item('e','scent',28,9),item('f','shelf',23,19),item('g','sign',27,48)]}
 ];
 export const clone=x=>JSON.parse(JSON.stringify(x));
-export function envelope(a){const m=MODULES[a.type];const half=a.type==='worktop'?(a.state?.08:.45):m.h/2;return {x:CENTERS[a.bay]+(m.mount===2?-BAY/2:0),y:a.y,hw:m.mount===2?m.w/2:BAY/2+.025,hh:half};}
-export function clampPosition(a){const e=envelope(a);return {...a,bay:Math.max(0,Math.min(2,Math.round(a.bay))),y:Math.max(Math.ceil((.25+e.hh)/PITCH)*PITCH,Math.min(Math.floor((2.7-e.hh)/PITCH)*PITCH,Math.round(a.y/PITCH)*PITCH))};}
-export function conflict(a,items){const e=envelope(a);return items.find(b=>{if(b.id===a.id)return false;const f=envelope(b);return Math.abs(e.x-f.x)<e.hw+f.hw-.055&&Math.abs(e.y-f.y)<e.hh+f.hh+.045;});}
-export function findSpace(type,items,preferredBay=0,preferredY=1.4){let a=clampPosition(item('new',type,preferredBay,preferredY));for(const bay of [preferredBay,...[0,1,2].filter(x=>x!==preferredBay)]){for(let d=0;d<2.5;d+=PITCH){for(const direction of [1,-1]){const n=clampPosition({...a,bay,y:preferredY+d*direction});if(!conflict(n,items))return n;}}}return null;}
+export function cells(a){const c=[...MODULES[a.type].cells];if(a.type==='cabinet'&&a.state)c[2]+=14;return c;}
+export function envelope(a){const c=cells(a);return {min:[a.gx,a.gy,a.gz],max:[a.gx+c[0],a.gy+c[1],a.gz+c[2]]};}
+export function valid(a){return ['gx','gy','gz'].every((k,i)=>Number.isInteger(a[k])&&a[k]>=0&&a[k]+cells(a)[i]<=GRID[i]);}
+export function clampPosition(a){const c=cells(a);return {...a,...Object.fromEntries(['gx','gy','gz'].map((k,i)=>[k,Math.max(0,Math.min(GRID[i]-c[i],Math.round(Number(a[k])||0)))]))};}
+export function conflict(a,items){const e=envelope(a);return items.find(b=>{if(b.id===a.id)return false;const f=envelope(b);return e.min.every((v,i)=>v<f.max[i]&&e.max[i]>f.min[i]);});}
+export function position(a){const c=MODULES[a.type].cells;return [ORIGIN[0]+(a.gx+c[0]/2)*PITCH,ORIGIN[1]+(a.gy+c[1]/2)*PITCH,a.gz*PITCH];}
+export function findSpace(type,items,gx=0,gy=25,gz=0,source={}){const a=clampPosition({...item('new',type,gx,gy,0,gz),...source,type,id:'new',gx,gy,gz});if(!conflict(a,items))return a;for(let r=1;r<60;r++)for(let dx=-r;dx<=r;dx++)for(const dy of [-r,r]){const n={...a,gx:a.gx+dx,gy:a.gy+dy};if(valid(n)&&!conflict(n,items))return n;}for(let x=0;x<60;x++)for(let y=0;y<60;y++){const n={...a,gx:x,gy:y};if(valid(n)&&!conflict(n,items))return n;}return null;}
