@@ -12,9 +12,12 @@ s.addItem('block',2,1,1,null,true);assert.equal(s.moveItem(block.id,{gx:2}),fals
 s.duplicate(block.id);assert.equal(s.getSnapshot().items.length,9);
 s.remove(block.id);assert.equal(s.getSnapshot().items.length,8);
 for(let i=0;i<4;i++){s.setPreset(i);assert.deepEqual(s.getSnapshot().items,PRESETS[i].items);assert.equal(s.getSnapshot().night,i===3);assert.equal(s.getSnapshot().dirty,false);}
-s.setPreset(0);s.toggleState('b');assert.equal(s.getSnapshot().items.find(a=>a.id==='b').state,1);
-s.patchItem('d',{intensity:85,temperature:4000,color:'#ed8e40'});const d=s.exportData();assert.equal(d.version,'grid48-1');assert.equal(d.grid.unit_mm,48);assert.equal(d.modules.find(a=>a.id==='d').intensity,85);assert.deepEqual(d.modules[0].position_cells,[3,26,0]);
+s.setExhibition(1);s.toggleState('v1');assert.equal(s.getSnapshot().items.find(a=>a.id==='v1').state,1);s.setExhibition(0);
+s.patchItem('d',{intensity:85,temperature:4000,color:'#ed8e40'});const d=s.exportData();assert.equal(d.version,'grid48-1');assert.equal(d.grid.unit_mm,48);assert.equal(d.modules.find(a=>a.id==='d').intensity,85);assert.deepEqual(d.modules[0].position_cells,[3,27,0]);
 s.togglePlay();assert.equal(s.getSnapshot().playing,true);s.moveItem('a',{gx:4});assert.equal(s.getSnapshot().playing,false);
 s.toggleGrid();assert.equal(s.getSnapshot().showDims,false);assert.ok(notifications>20);
+s.setExhibition(1);assert.equal(s.getSnapshot().transition.retained,3);assert.equal(s.getSnapshot().transition.nodes,6);assert.equal(s.exportData().exhibition,'层架陈列');
+s.setExhibition(2);assert.equal(s.getSnapshot().transition.moved,3);s.toggleState('r1');assert.equal(s.getSnapshot().items.find(a=>a.id==='r1').state,1);assert.equal(s.exportData().modules.find(a=>a.id==='r1').assembly.nodes,4);
+s.setExhibition(3);assert.equal(s.getSnapshot().exhibition,3);s.setPreset(1);s.setPreset(0);assert.equal(s.getSnapshot().exhibition,3);
 console.log('React store: immutable snapshots, add/duplicate/remove, movement/collision, presets, states, export and autoplay passed.');
 }finally{off();s.destroy();}

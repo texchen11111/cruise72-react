@@ -11,17 +11,29 @@ export const MODULES={
 };
 
 MODULES.block={name:'基础方块',en:'UNIT / 48',code:'00',kind:'展陈',draw:'frame',level:'48 mm 基础单元',anchor:'标准化背部接口（待开发）',intro:'最小 1 × 1 × 1 格单元，可相邻拼接、向外叠放，探索组合关系。',mechanism:'统一外包络为 48 mm 立方体。后接口连接适配背板，侧接口用于模块组合；内部结构仍需按 V3 重新校核。',parts:'拟用 M3 紧固件、定位销及防脱锁定件，规格待打样。',note:'叠放仅表达空间组合；悬挑连接与承载尚未验证。',mount:1};
-const sizes={block:[1,1,1],panel:[15,12,1],cabinet:[14,11,6],lamp:[4,4,4],scent:[3,5,3],shelf:[14,3,6],sign:[6,4,1],worktop:[14,10,10],acoustic:[14,15,1]};
+MODULES.block.name='48 mm 基础节点';
+MODULES.block.intro='1 × 1 × 1 格的连接基础；展示面和功能附件围绕节点组合。';
+const extension=(name,en,code,draw,kind,mount,intro,mechanism)=>({name,en,code,draw,kind,mount,intro,mechanism,level:'节点拓展组合',anchor:`48 mm 节点 × ${mount} + 专用连接件`,parts:'定位销、M3紧固件、防脱锁定件；承力连接件规格待打样。',note:'外包络以48 mm整数格计；板材厚度按结构设计。挂接和承载需实测。'});
+MODULES.rail=extension('节点横向连接','CROSSBAR','09','shelf','连接件',2,'两个节点连接一段横杆，形成连续的挂接基准。','端部48 mm节点通过定位和机械锁定连接横杆；背部适配板将载荷传回梯柱。');
+MODULES.tray=extension('浅托盘组合','TRAY','10','shelf','展陈',4,'用浅托盘陈列材料样本、小型工艺与航线藏品。','四个节点连接上下背梁，两侧承托臂托住可换托盘；前沿和侧沿限制展品滑移。');
+MODULES.bookrest=extension('倾斜书托组合','READING','11','frame','展陈',4,'让图录与艺术书以倾斜角度展示，可取阅后归位。','四个节点连接背架；带机械止挡的倾斜支撑托住展示板，底部挡边承托书刊。');
+const sizes={rail:[15,1,1],tray:[14,3,4],bookrest:[14,8,5],block:[1,1,1],panel:[15,12,1],cabinet:[14,11,6],lamp:[4,4,4],scent:[3,5,3],shelf:[14,3,6],sign:[6,4,1],worktop:[14,10,10],acoustic:[14,15,1]};
 for(const [k,m] of Object.entries(MODULES)){m.cells=sizes[k];[m.w,m.h,m.d]=m.cells.map(v=>v*PITCH);}
 MODULES.panel.note='15 × 12 × 1 格为占位包络，展板本体仍为薄板；夹持厚度与结构需要打样。';
 MODULES.worktop.note='预留 14 × 10 × 10 格活动包络，包含折叠路径。收拢后仍保留该空间，避免其他模块阻碍展开。';
 MODULES.cabinet.note+=' 开门时额外预留前方 14 格深度的转动包络；深度总范围为 24 格。';
 const item=(id,type,gx,gy,state=0,gz=0)=>({id,type,gx,gy,gz,state,color:'#3158e8',intensity:65,temperature:3200});
+export const EXHIBITIONS=[
+{id:'flat',name:'平面悬展',tag:'夹持 / 留白',desc:'以48 mm节点框选航线摄影与海报，灯具和展签共同组织阅读顺序。',items:[item('a','panel',3,27),item('b','panel',23,24),item('c','panel',42,27),item('d','lamp',8,45,1),item('e','lamp',28,45,1),item('f','sign',27,14)]},
+{id:'shelves',name:'层架陈列',tag:'承托 / 分层',desc:'沿用两组灯具与展签，通过节点、背梁和承托臂组织高低层板、浅托盘与透明展柜。',items:[item('s1','shelf',3,25),item('s2','shelf',3,34),item('v1','cabinet',23,24),item('t1','tray',43,25),item('d','lamp',8,45,1),item('e','lamp',28,45,1),item('f','sign',27,14)]},
+{id:'reading',name:'翻阅展示',tag:'倾斜 / 取阅',desc:'节点支撑倾斜书托，底部挡边承托图录；层板容纳备用书刊，横杆延续统一连接基准。',items:[item('r1','bookrest',3,24),item('r2','bookrest',23,24),item('s1','shelf',43,25),item('h1','rail',3,36),item('d','lamp',8,43,1),item('e','lamp',28,43,1),item('f','sign',27,14)]},
+{id:'mixed',name:'混合策展',tag:'图像 / 实物 / 书刊',desc:'以一段航线为主题，将摄影、地方工艺与旅行图录组合成有主次的展陈。节点和附件可随主题再次使用。',items:[item('a','panel',3,27),item('v1','cabinet',23,24),item('r2','bookrest',43,25),item('t1','tray',3,16),item('d','lamp',8,45,1),item('e','lamp',28,45,1),item('f','sign',27,14)]}
+];
 export const PRESETS=[
-{id:'gallery',time:'10:00',name:'航线展览',tag:'看见 / 发现',desc:'48 mm 网格内组合平面作品与实物展柜；灯具独立供电。',ambient:'day',items:[item('a','panel',3,26),item('b','cabinet',23,23),item('c','panel',42,26),item('d','lamp',8,45,1),item('e','lamp',28,45,1),item('f','sign',46,13)]},
-{id:'workshop',time:'14:00',name:'亲子工作坊',tag:'动手 / 共创',desc:'活动台预留完整折叠空间；同一套网格容纳材料、照明与软质面板。',ambient:'day',items:[item('a','worktop',3,16,1),item('b','worktop',43,16,1),item('c','shelf',23,24),item('d','sign',7,36),item('e','lamp',47,49,1),item('f','acoustic',23,34)]},
-{id:'market',time:'17:00',name:'航海小市集',tag:'交换 / 相遇',desc:'展柜与层板按整数格重新组合，改变展示和取放方式。',ambient:'day',items:[item('a','cabinet',3,30),item('b','shelf',3,20),item('c','cabinet',43,30),item('d','shelf',43,20),item('e','sign',27,46),item('f','worktop',23,14,1)]},
-{id:'lounge',time:'20:00',name:'晚间休憩',tag:'阅读 / 放松',desc:'降低照明亮度，以软质面板组织休憩界面；香氛默认关闭。',ambient:'night',items:[item('a','acoustic',3,24),item('b','acoustic',43,24),item('c','lamp',8,43,1),item('d','lamp',48,43,1),item('e','scent',28,9),item('f','shelf',23,19),item('g','sign',27,48)]}
+{id:'gallery',name:'展陈空间',tag:'观看 / 阅读 / 发现',desc:EXHIBITIONS[0].desc,ambient:'day',items:EXHIBITIONS[0].items},
+{id:'workshop',name:'共创空间',tag:'动手 / 共创',desc:'活动台预留完整折叠空间；同一套网格容纳材料、照明与软质面板。',ambient:'day',items:[item('a','worktop',3,16,1),item('b','worktop',43,16,1),item('c','shelf',23,24),item('d','sign',7,36),item('e','lamp',47,49,1),item('f','acoustic',23,34)]},
+{id:'market',name:'交流市集',tag:'交换 / 相遇',desc:'展柜与层板按整数格重新组合，改变展示和取放方式。',ambient:'day',items:[item('a','cabinet',3,30),item('b','shelf',3,20),item('c','cabinet',43,30),item('d','shelf',43,20),item('e','sign',27,46),item('f','worktop',23,14,1)]},
+{id:'lounge',name:'休憩空间',tag:'阅读 / 放松',desc:'降低照明亮度，以软质面板组织休憩界面；香氛默认关闭。',ambient:'night',items:[item('a','acoustic',3,24),item('b','acoustic',43,24),item('c','lamp',8,43,1),item('d','lamp',48,43,1),item('e','scent',28,9),item('f','shelf',23,19),item('g','sign',27,48)]}
 ];
 export const clone=x=>JSON.parse(JSON.stringify(x));
 export function cells(a){const c=[...MODULES[a.type].cells];if(a.type==='cabinet'&&a.state)c[2]+=14;return c;}
@@ -31,3 +43,7 @@ export function clampPosition(a){const c=cells(a);return {...a,...Object.fromEnt
 export function conflict(a,items){const e=envelope(a);return items.find(b=>{if(b.id===a.id)return false;const f=envelope(b);return e.min.every((v,i)=>v<f.max[i]&&e.max[i]>f.min[i]);});}
 export function position(a){const c=MODULES[a.type].cells;return [ORIGIN[0]+(a.gx+c[0]/2)*PITCH,ORIGIN[1]+(a.gy+c[1]/2)*PITCH,a.gz*PITCH];}
 export function findSpace(type,items,gx=0,gy=25,gz=0,source={}){const a=clampPosition({...item('new',type,gx,gy,0,gz),...source,type,id:'new',gx,gy,gz});if(!conflict(a,items))return a;for(let r=1;r<60;r++)for(let dx=-r;dx<=r;dx++)for(const dy of [-r,r]){const n={...a,gx:a.gx+dx,gy:a.gy+dy};if(valid(n)&&!conflict(n,items))return n;}for(let x=0;x<60;x++)for(let y=0;y<60;y++){const n={...a,gx:x,gy:y};if(valid(n)&&!conflict(n,items))return n;}return null;}
+
+// Shared conceptual bill of components. Nodes belong to each assembly's envelope.
+export function assembly(type){const m=MODULES[type];return {nodes:m.mount,connector:({block:'背部适配接口',panel:'夹持轴与背部适配板',rail:'横杆 × 1',shelf:'背梁 + 承托臂 × 2',tray:'背梁 + 承托臂 × 2',bookrest:'背梁 + 倾斜支撑 × 2',cabinet:'刚性背框 + 柜体连接件',lamp:'转向接头 + 独立低压线',scent:'芯盒接口 + 独立低压线',sign:'换片框接口',worktop:'背架 + 锁定支撑臂',acoustic:'轻框连接件'})[type],surface:({block:'无，基础连接单元',rail:'无，可接入兼容附件',panel:'薄型展板',shelf:'可换层板',tray:'带挡边浅托盘',bookrest:'倾斜展示板 + 挡边',cabinet:'层板 + 背板 + 透明围护',lamp:'定向灯头',scent:'可拆香氛芯盒',sign:'信息片',worktop:'折叠操作面',acoustic:'软质面板'})[type]};}
+export function compareLayouts(before,after){const same=after.filter(a=>before.some(b=>b.id===a.id&&b.type===a.type));return {retained:same.length,moved:same.filter(a=>{const b=before.find(b=>b.id===a.id);return ['gx','gy','gz'].some(k=>a[k]!==b[k]);}).length,added:after.length-same.length,removed:before.length-same.length,nodes:same.reduce((n,a)=>n+MODULES[a.type].mount,0)};}
