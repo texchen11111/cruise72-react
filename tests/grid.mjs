@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {MODULES as M,PRESETS,GRID,cells,valid,position,conflict,findSpace} from '../dist/model.js';
+import {MODULES as M,PRESETS,GRID,cells,valid,position,conflict,findSpace} from '../src/model.js';
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 for(const p of PRESETS)for(const a of p.items){ok(valid(a),p.id+' bounds '+a.id);ok(!conflict(a,p.items),p.id+' conflict '+a.id);const toggled={...a,state:a.state?0:1};ok(valid(toggled)&&!conflict(toggled,p.items),p.id+' state '+a.id);}
 const a={id:'a',type:'block',gx:4,gy:4,gz:4,state:0};
