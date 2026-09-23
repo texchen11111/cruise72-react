@@ -7,7 +7,7 @@ import React,{act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {createPlannerStore} from '../src/store.js';
 const temporary=path.resolve('node_modules/.cache/react-regression.mjs');fs.mkdirSync(path.dirname(temporary),{recursive:true});
-await build({entryPoints:['src/App.jsx'],outfile:temporary,bundle:true,platform:'node',format:'esm',jsx:'automatic',packages:'external',plugins:[{name:'renderer-test-double',setup(b){b.onResolve({filter:/createPlannerScene\.js$/},()=>({path:'scene',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:'export function createPlannerScene(){globalThis.__sceneMounts++;return {destroy(){globalThis.__sceneUnmounts++},resetView(){},snapshot(){return "data:image/png;base64,test"}}}'}));}}]});
+await build({entryPoints:['src/App.jsx'],outfile:temporary,bundle:true,platform:'node',format:'esm',jsx:'automatic',packages:'external',plugins:[{name:'renderer-test-double',setup(b){b.onResolve({filter:/createPlannerScene\.js$/},()=>({path:'scene',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:'export function generatePreview(){return null;} export function createPlannerScene(){globalThis.__sceneMounts++;return {destroy(){globalThis.__sceneUnmounts++},resetView(){},snapshot(){return "data:image/png;base64,test"}}}'}));}}]});
 const {default:App}=await import(temporary+'?test');
 const store=createPlannerStore();
 const dom=new JSDOM('<div id="app"></div>',{url:'https://example.test'});
@@ -17,6 +17,7 @@ const click=async selector=>{const e=document.querySelector(selector);assert.ok(
 try{
 await act(()=>root.render(React.createElement(App,{store})));
 assert.equal(document.querySelectorAll('[data-add]').length,12);
+await click('[data-filter="节点"]');assert.equal(document.querySelectorAll('[data-add]').length,1);
 await click('[data-filter="氛围"]');assert.equal(document.querySelectorAll('[data-add]').length,3);
 await click('[data-filter="全部"]');await click('[data-add="block"]');assert.equal(store.getSnapshot().items.length,7);
 await click('#duplicate');assert.equal(store.getSnapshot().items.length,8);await click('#remove');assert.equal(store.getSnapshot().items.length,7);
