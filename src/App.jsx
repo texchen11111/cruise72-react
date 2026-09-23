@@ -3,6 +3,7 @@ import {MODULES as M,clone} from './model.js';
 import {Catalog} from './components/Catalog.jsx';
 import {Inspector} from './components/Inspector.jsx';
 import {Stage} from './components/Stage.jsx';
+import {SceneGallery} from './components/SceneGallery.jsx';
 import {AboutDialog} from './components/AboutDialog.jsx';
 export function download(url,name){const a=document.createElement('a');a.href=url;a.download=name;a.click();}
 export default function App({store}){
@@ -13,5 +14,5 @@ export default function App({store}){
   window.addEventListener('keydown',onKey);window.__planner={getItems:()=>clone(store.getSnapshot().items),setPreset:store.setPreset,addItem:store.addItem,moveItem:store.moveItem,modules:M};
   return()=>{window.removeEventListener('keydown',onKey);delete window.__planner;};
  },[store]);
- return <><header><a className="brand" href="https://72cruise.haoooo.workers.dev/" target="_blank" rel="noopener" aria-label="72+ 项目网站">72+</a><div className="headtitle">邮轮模块配置器<small>48 MM NODE SYSTEM</small></div><div className="headlinks"><span className="pill">V4.2 · 材质与光影版</span><a href="https://72cruise.haoooo.workers.dev/" target="_blank" rel="noopener">项目网站 ↗</a><button id="about" onClick={()=>dialog.current.showModal()}>设计逻辑</button><button className="primary export" id="export" onClick={exportConfig}>导出方案 ↓</button></div></header><main className="workspace"><Catalog state={state} store={store}/><Stage state={state} store={store} onDownload={download}/><Inspector state={state} store={store} onExport={exportConfig}/></main><AboutDialog dialogRef={dialog}/></>;
+ return <><header><a className="brand" href="https://72cruise.haoooo.workers.dev/" target="_blank" rel="noopener" aria-label="72+ 项目网站">72+</a><div className="headtitle">邮轮模块配置器<small>48 MM NODE SYSTEM</small></div><div className="headlinks"><a className="gallery-nav" href="#scene-gallery">场景图册</a><span className="pill">V4.3 · 场景图册版</span><a href="https://72cruise.haoooo.workers.dev/" target="_blank" rel="noopener">项目网站 ↗</a><button id="about" onClick={()=>dialog.current.showModal()}>设计逻辑</button><button className="primary export" id="export" onClick={exportConfig}>导出方案 ↓</button></div></header><main id="planner" className="workspace"><Catalog state={state} store={store}/><Stage state={state} store={store} onDownload={download}/><Inspector state={state} store={store} onExport={exportConfig}/></main><SceneGallery store={store}/><AboutDialog dialogRef={dialog}/></>;
 }

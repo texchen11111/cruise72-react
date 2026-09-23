@@ -33,6 +33,9 @@ await click('[data-view="front"]');assert.equal(store.getSnapshot().view,'front'
 await click('[data-scene="0"]');assert.equal(document.querySelectorAll('[data-exhibition]').length,4);assert.ok(!document.querySelector('.time'));
 await click('[data-exhibition="1"]');assert.ok(document.querySelector('#sceneTitle').textContent.includes('层架陈列'));assert.ok(document.querySelector('.transition-note').textContent.includes('保留'));
 await click('[data-exhibition="2"]');await click('[data-tab="list"]');await click('[data-select="r1"]');assert.ok(document.querySelector('.assembly-spec').textContent.includes('48 mm'));await click('#toggleState');assert.equal(document.querySelector('#toggleState').textContent,'已取阅');
+dom.window.HTMLElement.prototype.scrollIntoView=function(){};
+assert.equal(document.querySelectorAll('.gallery-story').length,4);
+await click('[data-gallery-use="3"]');assert.equal(store.getSnapshot().exhibition,3);assert.equal(store.getSnapshot().preset,0);
 assert.equal(globalThis.__sceneMounts,1,'React updates must not remount Three.js');
 await act(()=>root.unmount());assert.equal(globalThis.__sceneUnmounts,1,'React unmount disposes renderer');assert.equal(window.__planner,undefined);
 console.log('React DOM interactions and renderer lifecycle passed (WebGL renderer mocked; not a browser visual test).');
