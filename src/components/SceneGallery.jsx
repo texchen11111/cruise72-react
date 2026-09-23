@@ -10,7 +10,7 @@ export function SceneGallery({store}){
  const [current,setCurrent]=useState(0),dialog=useRef(null);
  const useScene=i=>{store.stopPlay();store.setExhibition(i);document.getElementById('planner').scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});};
  return <section id="scene-gallery" className="scene-gallery" aria-labelledby="gallery-heading" onKeyDown={e=>e.stopPropagation()}>
-  <div className="gallery-heading"><div><div className="eyebrow">72+ / SPACES</div><h2 id="gallery-heading">在场景中，发现组合的可能</h2></div><p>同一面墙，四种展陈方式。<br/>从一个 48 mm 节点，延伸到完整空间。</p></div>
+  <div className="gallery-heading"><div><div className="eyebrow">72+ / SPACES</div><h2 id="gallery-heading">在邮轮中，体验墙面的无穷变化</h2></div><p>同一面墙，多种玩法；<br/>从一个 48 mm 节点，延伸到完整空间。</p></div>
   <div className="gallery-grid">{stories.map((s,i)=><article className="gallery-story" key={s.file}>
    <button className="gallery-image" aria-label={'放大'+EXHIBITIONS[i].name+'场景效果图'} onClick={()=>{setCurrent(i);dialog.current.showModal();}}><img src={'/scenes/'+s.file+'.png'} loading={i===0?"eager":"lazy"} fetchPriority={i===0?"high":"auto"} decoding="async" alt={EXHIBITIONS[i].name+'：邮轮展陈空间中的蓝色方形节点与模块组合，概念效果图'}/><span>查看大图 ↗</span></button>
    <div className="gallery-caption"><div><span className="gallery-index">0{i+1} / {EXHIBITIONS[i].name}</span><h3>{s.title}</h3><p>{s.text}</p><small>{s.parts}</small></div><button data-gallery-use={i} onClick={()=>useScene(i)}>搭建此场景 ↗</button></div>
