@@ -1,3 +1,54 @@
-import {MODULES as M} from '../model.js';
-import {Icon} from './Icon.jsx';
-export function Catalog({state,store}){return <aside className="catalog"><h2>模块库</h2><div className="sub">点击添加，或拖入墙面</div><div className="filter" role="group" aria-label="模块分类">{['全部','展陈','氛围','服务'].map(x=><button key={x} data-filter={x} className={x===state.filter?'active':''} onClick={()=>store.setFilter(x)}>{x}</button>)}</div><div className="cards">{Object.entries(M).sort((a,b)=>a[1].code.localeCompare(b[1].code)).filter(([,m])=>state.filter==='全部'||m.kind===state.filter).map(([k,m])=><button key={k} className="card" data-add={k} draggable="true" aria-label={'添加'+m.name} onClick={()=>store.addItem(k)} onDragStart={e=>{e.dataTransfer.setData('text/plain',k);e.dataTransfer.effectAllowed='copy';}}><span className="num">{m.code}</span><span className="addmark">＋</span><Icon type={k}/><strong>{m.name}</strong><small>{m.cells.join(' × ')} 格</small></button>)}</div><div className="catalognote"><b>一格 48 mm，按格搭建</b>所有模块按整数格占位，三轴移动均吸附到 48 mm 网格。展柜、灯具与香氛共享组合规则。<br/><br/>拖动调整左右 / 上下位置；右侧调节离墙层数。网格不等同于已经实现的安装点。</div></aside>;}
+import { MODULES as M } from '../model/index.js';
+import { Icon } from './Icon.jsx';
+export function Catalog({ state, store }) {
+  return (
+    <aside className="catalog">
+      <h2>模块库</h2>
+      <div className="sub">点击添加，或拖入墙面</div>
+      <div className="filter" role="group" aria-label="模块分类">
+        {['全部', '展陈', '氛围', '服务'].map((x) => (
+          <button
+            key={x}
+            data-filter={x}
+            className={x === state.filter ? 'active' : ''}
+            onClick={() => store.setFilter(x)}
+          >
+            {x}
+          </button>
+        ))}
+      </div>
+      <div className="cards">
+        {Object.entries(M)
+          .sort((a, b) => a[1].code.localeCompare(b[1].code))
+          .filter(([, m]) => state.filter === '全部' || m.kind === state.filter)
+          .map(([k, m]) => (
+            <button
+              key={k}
+              className="card"
+              data-add={k}
+              draggable="true"
+              aria-label={'添加' + m.name}
+              onClick={() => store.addItem(k)}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', k);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+            >
+              <span className="num">{m.code}</span>
+              <span className="addmark">＋</span>
+              <Icon type={k} />
+              <strong>{m.name}</strong>
+              <small>{m.cells.join(' × ')} 格</small>
+            </button>
+          ))}
+      </div>
+      <div className="catalognote">
+        <b>一格 48 mm，按格搭建</b>所有模块按整数格占位，三轴移动均吸附到 48 mm
+        网格。展柜、灯具与香氛共享组合规则。
+        <br />
+        <br />
+        拖动调整左右 / 上下位置；右侧调节离墙层数。网格不等同于已经实现的安装点。
+      </div>
+    </aside>
+  );
+}

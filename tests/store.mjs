@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {createPlannerStore} from '../src/store.js';
-import {PRESETS,clone} from '../src/model.js';
+import {createPlannerStore} from '../src/store/index.js';
+import {PRESETS,clone} from '../src/model/index.js';
 const s=createPlannerStore();let notifications=0;const off=s.subscribe(()=>notifications++);
 try{
 assert.deepEqual(s.getSnapshot().items,PRESETS[0].items);
