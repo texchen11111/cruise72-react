@@ -2,6 +2,16 @@
 
 现有测试页已迁移为 **React 19 + Vite + Three.js 0.170.0**。保留原页面 DOM 结构、文字、CSS、模型几何、材质、相机与动画参数，以及48 mm网格、四种场景、模块操作和JSON/PNG导出。
 
+## 当前部署
+
+- 在线地址：[72+ 邮轮模块配置器](https://cruise72-module-planner.aaaaajie19.chatgpt.site)。React 版本已于 2026-09-22 成功发布，网站现为公开访问。
+- 托管平台：Sites，继续沿用原项目 ID `appgprj_6aaa5e1a9544819193287ca435127a86` 和原链接，配置见 `.openai/hosting.json`。
+- 源码仓库：[texchen11111/cruise72-react](https://github.com/texchen11111/cruise72-react)，当前为私有仓库，主分支为 `main`。网站公开权限与源码仓库权限独立。
+- 部署内容：Vite 构建生成的 `dist/` 静态文件。当前未配置 GitHub 自动部署；推送代码到 GitHub 不会自动更新线上网站，网站更新需另行通过 Sites 发布。
+- [原项目介绍网站](https://72cruise.haoooo.workers.dev/)保持独立，本次 React 配置器发布未修改该网站。
+
+以上部署与权限状态于 2026-09-24 核对。配置器不含服务端或数据库；方案仅保存在当前页面内存中，刷新会恢复初始预设，请通过 JSON 导出保存。
+
 ## 开发
 
 需要 Node.js 20.19+ 或22.12+。
@@ -42,5 +52,3 @@ npm run build
 - 迁移前后初始DOM结构、属性与文字逐项一致，CSS和网格模型源文件逐字一致。
 - React DOM交互与组件生命周期测试通过：更新控件不会重建三维画布，卸载会调用清理。
 - 生产构建通过。DOM测试使用模拟渲染器，未执行真实浏览器WebGL视觉回归。
-
-保留原 Site 标识，不修改 https://72cruise.haoooo.workers.dev/ 网站。在线更新需要 Sites 服务可用；本次服务返回 `Invalid MCP request metadata`，因此尚未将此次迁移发布到线上。
