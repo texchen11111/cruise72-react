@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from '/vendor/OrbitControls.js';
+import { OrbitControls } from 'three/addons/OrbitControls.js';
 import { GRID, ORIGIN, PITCH } from '../model/index.js';
 import { cube } from './primitives.js';
 

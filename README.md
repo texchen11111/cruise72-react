@@ -33,10 +33,10 @@ npm run build
 - `src/App.jsx`：页面组合、快捷键、配置导出。
 - `src/components/`：模块库、设置/清单、三维工作区与设计说明。
 - `src/store.js`：统一不可变状态，通过 React `useSyncExternalStore` 订阅。包含添加/移动/复制/删除、场景、功能状态与自动演示。
-- `src/scene/createPlannerScene.js`：保留原有 Three.js 几何与渲染，React 挂载时初始化、卸载时清理动画帧、监听器、观察器、控制器和图形资源。
-- `src/model.js`：原样保留的模块元数据与48 mm网格规则。
-- `src/style.css`：原样保留的样式。
-- `public/vendor/`：保留的 Three.js 与 OrbitControls。
+- `src/scene/`：保留原有 Three.js 几何与渲染。`createPlannerScene.js` 为组装入口，按职责拆为 materials（共享材质）/ environment（相机灯光墙面）/ moduleGeometry（模块与梯柱建模）/ pointer（画布交互），React 挂载时初始化、卸载时清理动画帧、监听器、观察器、控制器和图形资源。
+- `src/model/`：原样保留的模块元数据与48 mm网格规则。
+- `src/styles/style.css`：原样保留的样式。
+- `vendor/`：保留的 Three.js 与 OrbitControls（项目根目录；开发时经 Vite alias 引入，构建时复制到 `dist/vendor/` 并由 `index.html` 的 importmap 在运行时加载）。
 
 ## 交互与尺度
 
