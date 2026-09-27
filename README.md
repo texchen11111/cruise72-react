@@ -7,10 +7,20 @@
 - 在线地址：[72+ 邮轮模块配置器](https://cruise72-module-planner.aaaaajie19.chatgpt.site)。React 版本已于 2026-09-22 成功发布，网站现为公开访问。
 - 托管平台：Sites，继续沿用原项目 ID `appgprj_6aaa5e1a9544819193287ca435127a86` 和原链接，配置见 `.openai/hosting.json`。
 - 源码仓库：[texchen11111/cruise72-react](https://github.com/texchen11111/cruise72-react)，当前为私有仓库，主分支为 `main`。网站公开权限与源码仓库权限独立。
-- 部署内容：Vite 构建生成的 `dist/` 静态文件。当前未配置 GitHub 自动部署；推送代码到 GitHub 不会自动更新线上网站，网站更新需另行通过 Sites 发布。
+- 部署内容：Vite 构建生成的 `dist/` 静态文件。Sites 地址仍需通过 Sites 单独发布。另有 Cloudflare Worker `cruise72-react` 已连接本仓库，GitHub 提交会触发 Workers Builds；其结果见提交检查 `Workers Builds: cruise72-react`。两条发布流程互相独立。
 - [原项目介绍网站](https://72cruise.haoooo.workers.dev/)保持独立，本次 React 配置器发布未修改该网站。
 
-以上部署与权限状态于 2026-09-24 核对。配置器不含服务端或数据库；方案仅保存在当前页面内存中，刷新会恢复初始预设，请通过 JSON 导出保存。
+Sites 与仓库权限状态于 2026-09-24 核对；Cloudflare Git 集成于 2026-09-27 核对。配置器不含服务端或数据库；方案仅保存在当前页面内存中，刷新会恢复初始预设，请通过 JSON 导出保存。
+
+## Cloudflare Workers 部署
+
+现有 Worker 名称为 `cruise72-react`，根目录 `wrangler.jsonc` 显式指定该名称及 `assets.directory: "./dist"`。保留 Vite 的构建配置，不依赖 Wrangler 自动识别和改写项目。
+
+- 构建命令：`npm run build`。
+- 部署命令：`npx wrangler deploy`。
+- 本地部署预检：先运行 `npm run build`，再运行 `npx wrangler@4.137.0 deploy --dry-run`。预检不会上传或发布。
+- 构建成功不等于部署成功；需确认对应提交的 Cloudflare 检查完成且成功。
+- `wrangler.jsonc` 不保存令牌；云端凭据由 Cloudflare 的 Git 集成管理。
 
 ## 开发
 
