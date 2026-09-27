@@ -6,7 +6,7 @@
 
 - 在线地址：[72+ 邮轮模块配置器](https://cruise72-module-planner.aaaaajie19.chatgpt.site)。React 版本已于 2026-09-22 成功发布，网站现为公开访问。
 - 托管平台：Sites，继续沿用原项目 ID `appgprj_6aaa5e1a9544819193287ca435127a86` 和原链接，配置见 `.openai/hosting.json`。
-- 源码仓库：[texchen11111/cruise72-react](https://github.com/texchen11111/cruise72-react)，当前为私有仓库，主分支为 `main`。网站公开权限与源码仓库权限独立。
+- 源码仓库：[texchen11111/cruise72-react](https://github.com/texchen11111/cruise72-react)，当前为公开仓库，主分支为 `main`。网站公开权限与源码仓库权限独立。
 - 部署内容：Vite 构建生成的 `dist/` 静态文件。Sites 地址仍需通过 Sites 单独发布。另有 Cloudflare Worker `cruise72-react` 已连接本仓库，GitHub 提交会触发 Workers Builds；其结果见提交检查 `Workers Builds: cruise72-react`。两条发布流程互相独立。
 - [原项目介绍网站](https://72cruise.haoooo.workers.dev/)保持独立，本次 React 配置器发布未修改该网站。
 
