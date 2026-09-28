@@ -28,10 +28,13 @@
 | [GitHub 源码仓库](https://github.com/texchen11111/cruise72-react) | 保存文件、修改记录和这份说明，仓库公开 | 把修改上传到 `main` 主分支 |
 | [Cloudflare 配置器后台](https://dash.cloudflare.com/59d3b4e645dce3ea2c7d805959c59471/workers/services/view/cruise72-react/production) | 托管另一份配置器，项目名为 `cruise72-react`；后台需要登录 | GitHub 的 `main` 更新后自动构建、部署 |
 | [原项目介绍网站](https://72cruise.haoooo.workers.dev/) | 介绍整个设计项目，配置器顶部会链接到这里 | 属于独立网站，不由本仓库更新 |
+| [Cloudflare 配置器（Worker）](https://cruise72-react.2161598874.workers.dev/) | `cruise72-react` 生产 Worker，当前可公开访问 | 由 Cloudflare Worker 部署；域名来自 Workers & Pages → Domains |
 
 **GitHub 更新会触发 Cloudflare 发布，但不会自动更新原来的 `chatgpt.site` 地址。** 检查效果时，先确认浏览器打开的是哪个网站。
 
-Cloudflare 的访客地址请在上述后台的域名或访问入口中查看。这份指南尚未记录经核验的配置器 Cloudflare 公开域名；后台链接和原项目介绍页都不能代替它。
+Cloudflare 生产 Worker 的已核验地址是 [`cruise72-react.2161598874.workers.dev`](https://cruise72-react.2161598874.workers.dev/)。控制台截图显示该地址允许任何持有链接的人访问；当前没有绑定自定义域名。若要绑定自己的域名，应在 **Domains → Add Domain** 完成 DNS 验证，并在绑定成功后把新地址同时更新到这里和 `src/App.jsx`。
+
+安全设置需要在 Cloudflare 控制台的 Worker 主机名范围内检查 WAF、Bot Fight Mode 和 Security Level。仓库代码无法读取或修改账号级防火墙策略；修改后请用无登录窗口测试生产地址，确认访客不会收到 403。
 
 同步基线：当前源码以 GitHub `main` 和本地工作目录的最新提交为准；发布前必须通过测试、构建和 Sites 部署检查。设计迭代记录见 [VERSION_HISTORY.md](VERSION_HISTORY.md)。
 

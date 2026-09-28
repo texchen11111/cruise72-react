@@ -82,7 +82,7 @@ export default function App({ store }) {
             场景图册
           </a>
           <span className="pill">V4.4 · 场景优先版</span>
-          <a href="https://72cruise.haoooo.workers.dev/" target="_blank" rel="noopener">
+          <a href="https://cruise72-react.2161598874.workers.dev/" target="_blank" rel="noopener">
             项目网站 ↗
           </a>
           <button id="about" onClick={() => dialog.current.showModal()}>
