@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ORIGIN, PITCH, envelope, position, cells } from '../model/index.js';
 import { createMaterials } from './materials.js';
-import { createModuleBuilder } from './moduleGeometry.js';
+import { createModuleBuilder, geometryKey } from './moduleGeometry.js';
 import { createEnvironment } from './environment.js';
 import { setupPointer } from './pointer.js';
 import { createAnimation } from './animation.js';
@@ -79,6 +79,10 @@ export function createPlannerScene(stage, store, options = {}) {
     ctx.night = s.night;
     const switching = revision !== s.sceneRevision;
     revision = s.sceneRevision;
+    if (switching) {
+      ctx.exiting.forEach(builder.dispose);
+      ctx.exiting = [];
+    }
     for (const [id, g] of ctx.models)
       if (!ctx.items.some((a) => a.id === id && a.type === g.userData.type)) {
         if (switching) ctx.exiting.push(g);
@@ -95,8 +99,8 @@ export function createPlannerScene(stage, store, options = {}) {
         }
       } else {
         const nextPosition = position(a);
-        g.position.set(...nextPosition);
-        if (g.userData.color !== a.color || g.userData.sizeKey !== cells(a).join('x')) rebuild(a);
+        if (!switching) g.position.set(...nextPosition);
+        if (g.userData.color !== a.color || g.userData.sizeKey !== geometryKey(a, ctx.items)) rebuild(a);
         if (switching) ctx.models.get(a.id).userData.transition = true;
       }
     }
@@ -138,7 +142,6 @@ export function createPlannerScene(stage, store, options = {}) {
     environment.init();
     ctx.scene.add(ctx.resizeHandles);
     if (!options.preview) {
-      builder.buildProps();
       for (const a of ctx.items) builder.buildModule(a);
       updateSelection();
       observer = new ResizeObserver(environment.resize);

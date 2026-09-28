@@ -83,7 +83,6 @@ for (const item of ctx.items) {
   assert.ok(meshes > 0, item.type);
 }
 assert.equal(ctx.models.size, 17);
-builder.buildProps();
 ctx.items = ctx.items.map((item) => ({ ...item, state: 1 }));
 const animation = createAnimation(ctx);
 animation.update();

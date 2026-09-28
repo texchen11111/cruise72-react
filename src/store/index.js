@@ -14,7 +14,9 @@ import {
   normalizeParents,
   childrenOf,
   parentFamily,
-  snapToPillar,
+  placeMounted,
+  mountingValid,
+  mountPoints,
 } from '../model/index.js';
 
 // React reads immutable snapshots through useSyncExternalStore. Three.js consumes
@@ -66,74 +68,115 @@ export function createPlannerStore() {
   };
   const select = (id) => update({ selected: id, rightTab: 'detail' });
   function moveItem(id, patch, commit = true) {
-    const a = state.items.find((x) => x.id === id);
+    let a = state.items.find((x) => x.id === id);
+    if (!a) {
+      // Dragging an assembly node drives its attached extension, not a loose copy.
+      a = state.items.find((x) => mountPoints(x, state.items).some((n) => n.id === id));
+    }
     if (!a) return false;
-    const positionPatch = Object.fromEntries(Object.entries(patch).filter(([k]) => ['gx', 'gy', 'gz'].includes(k)));
     const hasSize = patch.sizeCells !== undefined;
-    if (Object.values(positionPatch).some((v) => !Number.isFinite(Number(v)))) {
+    const axes = ['gx', 'gy', 'gz'];
+    if (axes.some((k) => patch[k] !== undefined && !Number.isFinite(Number(patch[k])))) {
       if (commit) toast('请输入有效格坐标');
       return false;
     }
-    if (hasSize && (!Array.isArray(patch.sizeCells) || patch.sizeCells.length !== 3 || patch.sizeCells.some((v) => !Number.isFinite(Number(v)) || Number(v) < 1))) {
+    if (hasSize && (!Array.isArray(patch.sizeCells) || patch.sizeCells.length !== 3
+      || patch.sizeCells.some((v) => !Number.isFinite(Number(v)) || Number(v) < 1))) {
       if (commit) toast('尺寸必须是正整数格');
       return false;
     }
-    let next = { ...a, ...patch, sizeCells: hasSize ? patch.sizeCells.map((v) => Math.round(Number(v))) : a.sizeCells };
-    for (const k of ['gx', 'gy', 'gz']) next[k] = Math.round(next[k]);
-    // 节点基于梯柱移动：横向格位吸附到最近的梯柱列，再带动整棵子树。
-    next = snapToPillar(next, state.items);
-    const moving = childrenOf(id, state.items);
-    const delta = ['gx', 'gy', 'gz'].map((k) => next[k] - a[k]);
-    const subtree = state.items.filter((x) => moving.has(x.id));
-    const moved = subtree.map((x) => ({ ...x, gx: x.gx + delta[0], gy: x.gy + delta[1], gz: x.gz + delta[2] }));
-    const candidate = hasSize ? moved.map((x) => (x.id === id ? next : x)) : moved;
-    const others = state.items.filter((x) => !moving.has(x.id));
-    if (candidate.some((x) => !valid(x) || conflict(x, others) || candidate.some((y) => y.id !== x.id && conflict(x, [y])))) {
-      if (commit) toast('超出网格或占位重叠：请换一个位置');
+    const requested = { ...a };
+    for (const k of axes) {
+      if (patch[k] !== undefined) requested[k] = Math.round(Number(patch[k]));
+    }
+    if (hasSize) requested.sizeCells = patch.sizeCells.map((v) => Math.round(Number(v)));
+    const next = placeMounted(requested, state.items, {
+      resize: hasSize,
+      retainSupports: hasSize,
+    });
+    if (!next) {
+      if (commit) toast('尺寸需覆盖挂接梯柱；请保留有效连接位置');
       return false;
     }
-    const byId = new Map(candidate.map((x) => [x.id, x]));
-    // 提交时重新归一父子关系：拓展挂到最近的节点，节点挂到最近的梯柱。
-    const items = commit ? normalizeParents(state.items.map((x) => byId.get(x.id) || x)) : state.items.map((x) => byId.get(x.id) || x);
+    const delta = axes.map((k) => next[k] - a[k]);
+    let items = state.items.map((x) => x.id === a.id ? next : { ...x });
+    if (a.type === 'pillar') {
+      items = items.map((x) => {
+        if (!x.supportIds?.includes(a.id)) return x;
+        const primary = x.supportIds[0] === a.id;
+        return {
+          ...x,
+          gx: x.gx + (primary ? delta[0] : 0),
+          gy: x.gy + delta[1],
+          gz: x.gz + delta[2],
+        };
+      });
+    } else {
+      const descendants = childrenOf(a.id, state.items);
+      items = items.map((x) => x.id !== a.id && descendants.has(x.id) ? {
+        ...x,
+        gx: x.gx + delta[0],
+        gy: x.gy + delta[1],
+        gz: x.gz + delta[2],
+        supportIds: undefined,
+      } : x);
+    }
+    items = normalizeParents(items);
+    if (items.some((x) => !valid(x) || !mountingValid(x, items) || conflict(x, items))) {
+      if (commit) toast('无法挂接：超界、重叠或连接点离开梯柱，已保留原位置');
+      return false;
+    }
     update({ items });
     if (commit) changed();
     return true;
   }
   function addItem(type, gx = 23, gy = 26, gz = 0, from = null, exact = false) {
     if (!M[type]) return;
+    const selected = state.items.find((x) => x.id === state.selected);
+    const parent = M[type].family === '拓展' && selected?.type === 'block' ? selected : null;
     const candidate = clampPosition({
       ...from,
-      id: 'new',
+      id: 'u' + uid,
       type,
-      gx,
-      gy,
-      gz,
+      gx: parent ? parent.gx : gx,
+      gy: parent ? parent.gy : gy,
+      gz: parent ? parent.gz : gz,
+      parentId: parent?.id,
+      supportIds: undefined,
       state: from?.state || 0,
       color: from?.color || '#3158e8',
       intensity: from?.intensity || 65,
       temperature: from?.temperature || 3200,
     });
-    const free = exact
-      ? !conflict(candidate, state.items)
-        ? candidate
-        : null
-      : findSpace(type, state.items, gx, gy, gz, from || {});
-    if (!free) {
-      toast('此层没有可用位置，请调整坐标或移除模块');
+    const attempts = [candidate];
+    if (!exact) {
+      for (let y = 0; y < GRID[1]; y++) {
+        for (const x of [candidate.gx, ...state.items.filter((p) => p.type === 'pillar').map((p) => p.gx)]) {
+          attempts.push({ ...candidate, gx: x, gy: y });
+        }
+      }
+      attempts.sort((a, b) =>
+        Math.abs(a.gx - candidate.gx) + Math.abs(a.gy - candidate.gy)
+        - Math.abs(b.gx - candidate.gx) - Math.abs(b.gy - candidate.gy));
+    }
+    let placed;
+    for (const attempt of attempts) {
+      const next = placeMounted(attempt, state.items);
+      if (next && valid(next) && mountingValid(next, state.items)
+        && !conflict(next, state.items)) {
+        placed = next;
+        break;
+      }
+    }
+    if (!placed) {
+      toast('没有可用挂接位置；请先添加梯柱，或腾出同组梯柱上的空间');
       return;
     }
-    // 节点放置时吸附到最近的梯柱列；吸附后与现有模块冲突则退回原自由位。
-    const snapped = snapToPillar(free, state.items);
-    const placed = valid(snapped) && !conflict(snapped, state.items) ? snapped : free;
-    const selected = state.items.find((x) => x.id === state.selected);
-    const wanted = parentFamily(type);
-    const parent = wanted && selected && M[selected.type]?.family === wanted ? selected : null;
-    const a = { ...placed, id: 'u' + uid++ };
-    if (parent) a.parentId = parent.id;
-    update({ items: normalizeParents([...state.items, a]), selected: a.id, rightTab: 'detail' });
+    uid++;
+    update({ items: [...state.items, placed], selected: placed.id, rightTab: 'detail' });
     changed();
-    toast('已添加' + M[type].name + ' · ' + M[type].cells.join(' × ') + ' 格');
-    return a;
+    toast('已添加' + M[type].name + ' · 已吸附挂接');
+    return placed;
   }
   function applyLayout(i, exhibition) {
     const layout = i === 0 ? EXHIBITIONS[exhibition] : PRESETS[i];
@@ -182,7 +225,11 @@ export function createPlannerStore() {
     patchItem(id, { state: next.state });
   }
   function remove(id) {
-    update({ items: state.items.filter((a) => a.id !== id).map((a) => (a.parentId === id ? { ...a, parentId: null } : a)), selected: null });
+    const removed = childrenOf(id, state.items);
+    for (const a of state.items) {
+      if (a.supportIds?.includes(id)) removed.add(a.id);
+    }
+    update({ items: state.items.filter((a) => !removed.has(a.id)), selected: null });
     changed();
   }
   function duplicate(id) {
@@ -192,7 +239,7 @@ export function createPlannerStore() {
   function exportData() {
     return {
       project: '邮轮72变',
-      version: 'grid48-1',
+      version: 'grid48-2',
       wall_mm: [2900, 2900],
       grid: {
         unit_mm: 48,
@@ -205,6 +252,7 @@ export function createPlannerStore() {
       modified: state.dirty,
       warning:
         '整数格为占位与布局规则，材料厚度可小于一格。48mm背部适配系统、离墙叠放及承载待工程验证。',
+      nodes: state.items.flatMap((a) => mountPoints(a, state.items)),
       modules: state.items.map((a) => ({
         ...a,
         name: M[a.type].name,
@@ -213,6 +261,8 @@ export function createPlannerStore() {
         family: M[a.type].family,
         subkind: M[a.type].subkind,
         parent_id: a.parentId || null,
+        support_ids: a.supportIds || [],
+        connection_nodes: mountPoints(a, state.items),
         interfaces: M[a.type].interfaces,
         size_cells: cells(a),
         dimensions_mm: cells(a).map((v) => v * 48),

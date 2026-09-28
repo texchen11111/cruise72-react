@@ -1,3 +1,4 @@
+import { normalizeParents as normalizeLayout } from './mounting.js';
 export const PITCH = 0.048,
   GRID = [60, 60, 24],
   ORIGIN = [-1.44, 0.01, 0];
@@ -365,9 +366,12 @@ const item = (id, type, gx, gy, state = 0, gz = 0) => ({
   intensity: 65,
   temperature: 3200,
 });
-// 梯柱列：所有预设共享的三根基底轨条（id 保持一致，切换场景时视为固定设施）。
-export const PILLAR_COLUMNS = [3, 23, 43];
-const pillarItems = () => PILLAR_COLUMNS.map((gx, i) => item('p' + (i + 1), 'pillar', gx, 0));
+// Video reference: two bays, each supported by a pair of real pillars.
+export const PILLAR_COLUMNS = [6, 20, 38, 52];
+const pillarItems = () => PILLAR_COLUMNS.map((gx, i) => ({
+  ...item('p' + (i + 1), 'pillar', gx, 0),
+  sizeCells: [1, 60, 1],
+}));
 export const EXHIBITIONS = [
   {
     id: 'flat',
@@ -375,12 +379,12 @@ export const EXHIBITIONS = [
     tag: '夹持 / 留白',
     desc: '以48 mm节点框选航线摄影与海报，灯具和展签共同组织阅读顺序。',
     items: [
-      item('a', 'panel', 3, 27),
-      item('b', 'panel', 23, 24),
-      item('c', 'panel', 42, 27),
-      item('d', 'lamp', 8, 45, 1),
-      item('e', 'lamp', 28, 45, 1),
-      item('f', 'sign', 27, 14),
+      item('a', 'panel', 6, 29),
+      item('b', 'panel', 38, 29),
+      item('c', 'panel', 6, 12),
+      item('d', 'lamp', 6, 47, 1),
+      item('e', 'lamp', 38, 47, 1),
+      item('f', 'sign', 38, 15),
       ...pillarItems(),
     ],
   },
@@ -390,13 +394,13 @@ export const EXHIBITIONS = [
     tag: '承托 / 分层',
     desc: '沿用两组灯具与展签，通过节点、背梁和承托臂组织高低层板、浅托盘与透明展柜。',
     items: [
-      item('s1', 'shelf', 3, 25),
-      item('s2', 'shelf', 3, 34),
-      item('v1', 'cabinet', 23, 24),
-      item('t1', 'tray', 43, 25),
-      item('d', 'lamp', 8, 45, 1),
-      item('e', 'lamp', 28, 45, 1),
-      item('f', 'sign', 27, 14),
+      item('s1', 'shelf', 6, 23),
+      item('s2', 'shelf', 6, 34),
+      item('v1', 'cabinet', 38, 25),
+      item('t1', 'tray', 38, 15),
+      item('d', 'lamp', 6, 47, 1),
+      item('e', 'lamp', 38, 47, 1),
+      item('f', 'sign', 6, 12),
       ...pillarItems(),
     ],
   },
@@ -406,13 +410,13 @@ export const EXHIBITIONS = [
     tag: '倾斜 / 取阅',
     desc: '节点支撑倾斜书托，底部挡边承托图录；层板容纳备用书刊，横杆延续统一连接基准。',
     items: [
-      item('r1', 'bookrest', 3, 24),
-      item('r2', 'bookrest', 23, 24),
-      item('s1', 'shelf', 43, 25),
-      item('h1', 'rail', 3, 36),
-      item('d', 'lamp', 8, 43, 1),
-      item('e', 'lamp', 28, 43, 1),
-      item('f', 'sign', 27, 14),
+      item('r1', 'bookrest', 6, 24),
+      item('r2', 'bookrest', 38, 24),
+      item('s1', 'shelf', 38, 15),
+      item('h1', 'rail', 6, 38),
+      item('d', 'lamp', 6, 45, 1),
+      item('e', 'lamp', 38, 45, 1),
+      item('f', 'sign', 6, 12),
       ...pillarItems(),
     ],
   },
@@ -422,13 +426,13 @@ export const EXHIBITIONS = [
     tag: '图像 / 实物 / 书刊',
     desc: '以一段航线为主题，将摄影、地方工艺与旅行图录组合成有主次的展陈。节点和附件可随主题再次使用。',
     items: [
-      item('a', 'panel', 3, 27),
-      item('v1', 'cabinet', 23, 24),
-      item('r2', 'bookrest', 43, 25),
-      item('t1', 'tray', 3, 16),
-      item('d', 'lamp', 8, 45, 1),
-      item('e', 'lamp', 28, 45, 1),
-      item('f', 'sign', 27, 14),
+      item('a', 'panel', 6, 29),
+      item('v1', 'cabinet', 38, 29),
+      item('r2', 'bookrest', 38, 15),
+      item('t1', 'tray', 6, 17),
+      item('d', 'lamp', 6, 47, 1),
+      item('e', 'lamp', 38, 47, 1),
+      item('f', 'sign', 6, 9),
       ...pillarItems(),
     ],
   },
@@ -449,12 +453,12 @@ export const PRESETS = [
     desc: '活动台预留完整折叠空间；同一套网格容纳材料、照明与软质面板。',
     ambient: 'day',
     items: [
-      item('a', 'worktop', 3, 16, 1),
-      item('b', 'worktop', 43, 16, 1),
-      item('c', 'shelf', 23, 24),
-      item('d', 'sign', 7, 36),
-      item('e', 'lamp', 47, 49, 1),
-      item('f', 'acoustic', 23, 34),
+      item('a', 'worktop', 6, 15, 1),
+      item('b', 'worktop', 38, 15, 1),
+      item('c', 'shelf', 6, 29),
+      item('d', 'sign', 6, 46),
+      item('e', 'lamp', 38, 46, 1),
+      item('f', 'acoustic', 38, 29),
       ...pillarItems(),
     ],
   },
@@ -465,12 +469,12 @@ export const PRESETS = [
     desc: '展柜与层板按整数格重新组合，改变展示和取放方式。',
     ambient: 'day',
     items: [
-      item('a', 'cabinet', 3, 30),
-      item('b', 'shelf', 3, 20),
-      item('c', 'cabinet', 43, 30),
-      item('d', 'shelf', 43, 20),
-      item('e', 'sign', 27, 46),
-      item('f', 'worktop', 23, 14, 1),
+      item('a', 'cabinet', 6, 31),
+      item('b', 'shelf', 6, 23),
+      item('c', 'cabinet', 38, 31),
+      item('d', 'shelf', 38, 23),
+      item('e', 'sign', 38, 49),
+      item('f', 'worktop', 6, 10, 1),
       ...pillarItems(),
     ],
   },
@@ -481,13 +485,13 @@ export const PRESETS = [
     desc: '降低照明亮度，以软质面板组织休憩界面；香氛默认关闭。',
     ambient: 'night',
     items: [
-      item('a', 'acoustic', 3, 24),
-      item('b', 'acoustic', 43, 24),
-      item('c', 'lamp', 8, 43, 1),
-      item('d', 'lamp', 48, 43, 1),
-      item('e', 'scent', 28, 9),
-      item('f', 'shelf', 23, 19),
-      item('g', 'sign', 27, 48),
+      item('a', 'acoustic', 6, 29),
+      item('b', 'acoustic', 38, 29),
+      item('c', 'lamp', 6, 48, 1),
+      item('d', 'lamp', 38, 48, 1),
+      item('e', 'scent', 38, 10),
+      item('f', 'shelf', 6, 18),
+      item('g', 'sign', 6, 10),
       ...pillarItems(),
     ],
   },
@@ -498,29 +502,8 @@ export function parentFamily(type) {
   if (MODULES[type]?.family === '拓展') return '节点';
   return null;
 }
-export function normalizeParents(items) {
-  const next = clone(items);
-  for (const a of next) {
-    const wanted = parentFamily(a.type);
-    if (!wanted) {
-      delete a.parentId;
-      continue;
-    }
-    const current = next.find((b) => b.id === a.parentId && MODULES[b.type]?.family === wanted);
-    if (current) continue;
-    const candidates = next.filter((b) => MODULES[b.type]?.family === wanted);
-    if (!candidates.length) {
-      delete a.parentId;
-      continue;
-    }
-    candidates.sort(
-      (x, y) =>
-        Math.abs(x.gx - a.gx) + Math.abs(x.gy - a.gy) - (Math.abs(y.gx - a.gx) + Math.abs(y.gy - a.gy)),
-    );
-    a.parentId = candidates[0].id;
-  }
-  return next;
-}
+export { normalizeParents, snapToPillar, placeMounted, mountPoints, mountingValid } from './mounting.js';
+
 export function childrenOf(id, items) {
   const out = new Set([id]);
   let changed = true;
@@ -564,22 +547,12 @@ export function conflict(a, items) {
   const aPillar = MODULES[a.type]?.family === '梯柱';
   return items.find((b) => {
     if (b.id === a.id) return false;
+    if (a.parentId === b.id || b.parentId === a.id) return false;
     // 梯柱是挂载基底：与节点、拓展的包络重叠不算冲突；梯柱之间仍互斥。
     if (aPillar !== (MODULES[b.type]?.family === '梯柱')) return false;
     const f = envelope(b);
     return e.min.every((v, i) => v < f.max[i] && e.max[i] > f.min[i]);
   });
-}
-// 节点基于梯柱定位：存在梯柱时，节点的横向格位吸附到最近的梯柱列。
-export function snapToPillar(a, items) {
-  if (MODULES[a.type]?.family !== '节点') return a;
-  const pillars = items.filter((b) => b.id !== a.id && MODULES[b.type]?.family === '梯柱');
-  if (!pillars.length) return a;
-  const gx = pillars.reduce(
-    (best, p) => (Math.abs(p.gx - a.gx) < Math.abs(best - a.gx) ? p.gx : best),
-    pillars[0].gx,
-  );
-  return gx === a.gx ? a : { ...a, gx };
 }
 export function position(a) {
   const c = cells(a);
@@ -671,4 +644,9 @@ export function compareLayouts(before, after) {
     removed: before.length - same.length,
     nodes: same.reduce((n, a) => n + MODULES[a.type].mount, 0),
   };
+}
+
+// Presets use the same attachment solver as dragging, adding and export.
+for (const layout of [...EXHIBITIONS, ...PRESETS]) {
+  layout.items = normalizeLayout(layout.items);
 }

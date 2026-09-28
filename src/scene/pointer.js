@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MODULES as M, ORIGIN, PITCH, valid, conflict } from '../model/index.js';
+import { MODULES as M, ORIGIN, PITCH } from '../model/index.js';
 import { cells } from '../model/index.js';
 
 export function setupPointer(ctx, store) {
@@ -67,10 +67,9 @@ export function setupPointer(ctx, store) {
       const delta = drag.axis === 'x' ? Math.round((p.x - drag.start.x) / PITCH) : drag.axis === 'y' ? Math.round((p.y - drag.start.y) / PITCH) : Math.round((p.z - drag.start.z) / PITCH);
       next[index] = Math.max(1, drag.a.sizeCells[index] + delta);
       const test = { ...a, sizeCells: next };
-      drag.blocked = !valid(test) || !!conflict(test, ctx.items);
+      drag.blocked = !store.resizeItem(a.id, next);
       ctx.selectionBox.material.color.set(drag.blocked ? '#e25743' : '#3158e8');
       if (!drag.blocked) {
-        store.resizeItem(a.id, next);
         drag.moved = true;
       }
       return;
@@ -80,10 +79,9 @@ export function setupPointer(ctx, store) {
         gx: drag.a.gx + Math.round((p.x - drag.start.x) / PITCH),
         gy: drag.a.gy + Math.round((p.y - drag.start.y) / PITCH),
       };
-    drag.blocked = !valid(test) || !!conflict(test, ctx.items);
+    drag.blocked = !store.moveItem(a.id, { gx: test.gx, gy: test.gy }, false);
     ctx.selectionBox.material.color.set(drag.blocked ? '#e25743' : '#3158e8');
     if (!drag.blocked) {
-      store.moveItem(a.id, { gx: test.gx, gy: test.gy }, false);
       drag.moved = true;
     }
   });

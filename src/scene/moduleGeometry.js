@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MODULES as M, position, cells } from '../model/index.js';
+import { MODULES as M, position, cells, mountPoints } from '../model/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
 import { buildSurface } from './models/surfaces.js';
@@ -7,10 +7,12 @@ import { buildSurface } from './models/surfaces.js';
 export function createModuleBuilder(ctx) {
   const { mat, textTexture, shared } = ctx.materials;
   const { silver, orange, dark, white, glass } = shared;
-  function node(g, x, y, co) {
-    const b = mat(co);
-    cube(g, 0.048, 0.048, 0.048, x, y, 0.024, b);
-    cube(g, 0.016, 0.004, 0.001, x, y, 0.0475, silver);
+  function node(g, x, y, co, nodeId) {
+    const connector = new THREE.Group();
+    connector.position.set(x, y, 0);
+    connector.userData.mountNodeId = nodeId;
+    buildRhinoNode(connector, 0.048, 0.048, 0.048, silver, mat(co), dark);
+    g.add(connector);
   }
 
   function buildModule(a) {
@@ -157,11 +159,29 @@ export function createModuleBuilder(ctx) {
         cube(g, 0.025, h, 0.018, x, 0, 0.009, silver);
       g.add(act);
     }
-    if (a.type !== 'block') {
-      const xs = m.mount === 4 || a.type === 'rail' ? [-w / 2 + 0.024, w / 2 - 0.024] : [0];
-      const ys = a.type === 'rail' ? [0] : [-h / 2 + 0.024, h / 2 - 0.024];
-      for (const x of xs) for (const y of ys) node(g, x, y, a.color);
-      if (m.mount === 4) for (const y of ys) cube(g, w - 0.048, 0.012, 0.012, 0, y, 0.018, silver);
+    if (m.mount > 0 && a.type !== 'block') {
+      const connections = mountPoints(a, ctx.items);
+      const [cx, cy] = position(a);
+      const points = connections.length ? connections.map((n) => ({
+        x: -1.44 + (n.gx + 0.5) * 0.048 - cx,
+        y: 0.01 + (n.gy + 0.5) * 0.048 - cy,
+        id: n.id,
+      })) : (m.mount === 4 || a.type === 'rail'
+        ? [-w / 2 + 0.024, w / 2 - 0.024] : [-w / 2 + 0.024])
+        .flatMap((x) => (a.type === 'rail' ? [0] : [-h / 2 + 0.024, h / 2 - 0.024])
+          .map((y) => ({ x, y })));
+      for (const p of points) {
+        if (p.id !== a.parentId || !ctx.items.some((n) => n.id === p.id)) {
+          node(g, p.x, p.y, a.color, p.id);
+        }
+      }
+      if (m.mount === 4) {
+        const xs = points.map((p) => p.x);
+        const min = Math.min(...xs), max = Math.max(...xs);
+        for (const y of [...new Set(points.map((p) => p.y))]) {
+          cube(g, max - min, 0.012, 0.012, (min + max) / 2, y, 0.018, silver);
+        }
+      }
     }
     g.userData.act = act;
     if (act) {
@@ -174,7 +194,7 @@ export function createModuleBuilder(ctx) {
     ctx.scene.add(g);
     g.userData.type = a.type;
     g.userData.color = a.color;
-    g.userData.sizeKey = cells(a).join('x');
+    g.userData.sizeKey = geometryKey(a, ctx.items);
     ctx.models.set(a.id, g);
     return g;
   }
@@ -193,9 +213,11 @@ export function createModuleBuilder(ctx) {
       }
     });
   }
-  function buildProps() {
-    for (const x of [-1.2, -0.48, 0.24, 0.96])
-      cube(ctx.scene, 0.018, 2.88, 0.018, x, 1.45, -0.002, silver);
-  }
-  return { buildModule, dispose, buildProps };
+  return { buildModule, dispose };
+}
+
+export function geometryKey(a, items) {
+  return JSON.stringify([cells(a), mountPoints(a, items).map((n) => [
+    n.id, n.gx - a.gx, n.gy - a.gy, n.gz - a.gz,
+  ])]);
 }
