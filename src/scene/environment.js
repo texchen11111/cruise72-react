@@ -37,7 +37,18 @@ export function createEnvironment(ctx, stage, options = {}) {
   function init3D() {
     ctx.scene = new THREE.Scene();
     ctx.scene.background = new THREE.Color('#e9e7e1');
-    ctx.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    // Some embedded browsers reject multisampling or a preserved drawing
+    // buffer even though ordinary WebGL is available. Retry with the lowest
+    // compatible context before the UI falls back to the plan view.
+    try {
+      ctx.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    } catch (firstError) {
+      try {
+        ctx.renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false, powerPreference: 'low-power' });
+      } catch {
+        throw firstError;
+      }
+    }
     ctx.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     ctx.renderer.shadowMap.enabled = true;
     ctx.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
