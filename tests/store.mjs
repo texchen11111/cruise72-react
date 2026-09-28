@@ -13,15 +13,20 @@ try {
   const block = s.addItem('block', 0, 0, 0);
   assert.equal(s.getSnapshot().selected, block.id);
   assert.equal(s.moveItem(block.id, { gx: 1, gy: 1, gz: 1 }), true);
+  assert.equal(
+    s.getSnapshot().items.find((a) => a.id === block.id).gx,
+    3,
+    '节点横向吸附到最近的梯柱列',
+  );
   const saved = clone(s.getSnapshot().items);
-  assert.equal(s.moveItem(block.id, { gx: -1 }), false);
+  assert.equal(s.moveItem(block.id, { gy: -1 }), false);
   assert.deepEqual(s.getSnapshot().items, saved);
-  s.addItem('block', 2, 1, 1, null, true);
-  assert.equal(s.moveItem(block.id, { gx: 2 }), false);
+  s.addItem('block', 2, 2, 1, null, true);
+  assert.equal(s.moveItem(block.id, { gx: 2, gy: 2, gz: 1 }), false);
   s.duplicate(block.id);
-  assert.equal(s.getSnapshot().items.length, 9);
+  assert.equal(s.getSnapshot().items.length, 12);
   s.remove(block.id);
-  assert.equal(s.getSnapshot().items.length, 8);
+  assert.equal(s.getSnapshot().items.length, 11);
   for (let i = 0; i < 4; i++) {
     s.setPreset(i);
     assert.deepEqual(s.getSnapshot().items, PRESETS[i].items);
@@ -46,7 +51,7 @@ try {
   assert.equal(s.getSnapshot().showDims, false);
   assert.ok(notifications > 20);
   s.setExhibition(1);
-  assert.equal(s.getSnapshot().transition.retained, 3);
+  assert.equal(s.getSnapshot().transition.retained, 6);
   assert.equal(s.getSnapshot().transition.nodes, 6);
   assert.equal(s.exportData().exhibition, '层架陈列');
   s.setExhibition(2);
@@ -61,7 +66,8 @@ try {
   assert.equal(s.getSnapshot().exhibition, 3);
   const h = createPlannerStore();
   const pillar = h.addItem('pillar', 0, 0, 0, null, true);
-  const node = h.addItem('block', 4, 4, 0, null, true);
+  const node = h.addItem('block', 1, 4, 0, null, true);
+  assert.equal(node.gx, 0, '节点放置时吸附到新梯柱列');
   assert.equal(node.parentId, pillar.id);
   const extension = h.addItem('panel', 8, 4, 0, null, true);
   assert.equal(extension.parentId, node.id);

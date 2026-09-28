@@ -14,6 +14,7 @@ import {
   normalizeParents,
   childrenOf,
   parentFamily,
+  snapToPillar,
 } from '../model/index.js';
 
 // React reads immutable snapshots through useSyncExternalStore. Three.js consumes
@@ -77,8 +78,10 @@ export function createPlannerStore() {
       if (commit) toast('尺寸必须是正整数格');
       return false;
     }
-    const next = { ...a, ...patch, sizeCells: hasSize ? patch.sizeCells.map((v) => Math.round(Number(v))) : a.sizeCells };
+    let next = { ...a, ...patch, sizeCells: hasSize ? patch.sizeCells.map((v) => Math.round(Number(v))) : a.sizeCells };
     for (const k of ['gx', 'gy', 'gz']) next[k] = Math.round(next[k]);
+    // 节点基于梯柱移动：横向格位吸附到最近的梯柱列，再带动整棵子树。
+    next = snapToPillar(next, state.items);
     const moving = childrenOf(id, state.items);
     const delta = ['gx', 'gy', 'gz'].map((k) => next[k] - a[k]);
     const subtree = state.items.filter((x) => moving.has(x.id));
@@ -90,7 +93,9 @@ export function createPlannerStore() {
       return false;
     }
     const byId = new Map(candidate.map((x) => [x.id, x]));
-    update({ items: state.items.map((x) => byId.get(x.id) || x) });
+    // 提交时重新归一父子关系：拓展挂到最近的节点，节点挂到最近的梯柱。
+    const items = commit ? normalizeParents(state.items.map((x) => byId.get(x.id) || x)) : state.items.map((x) => byId.get(x.id) || x);
+    update({ items });
     if (commit) changed();
     return true;
   }
@@ -117,12 +122,15 @@ export function createPlannerStore() {
       toast('此层没有可用位置，请调整坐标或移除模块');
       return;
     }
+    // 节点放置时吸附到最近的梯柱列；吸附后与现有模块冲突则退回原自由位。
+    const snapped = snapToPillar(free, state.items);
+    const placed = valid(snapped) && !conflict(snapped, state.items) ? snapped : free;
     const selected = state.items.find((x) => x.id === state.selected);
     const wanted = parentFamily(type);
     const parent = wanted && selected && M[selected.type]?.family === wanted ? selected : null;
-    const a = { ...free, id: 'u' + uid++ };
+    const a = { ...placed, id: 'u' + uid++ };
     if (parent) a.parentId = parent.id;
-    update({ items: [...state.items, a], selected: a.id, rightTab: 'detail' });
+    update({ items: normalizeParents([...state.items, a]), selected: a.id, rightTab: 'detail' });
     changed();
     toast('已添加' + M[type].name + ' · ' + M[type].cells.join(' × ') + ' 格');
     return a;

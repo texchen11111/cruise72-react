@@ -365,6 +365,9 @@ const item = (id, type, gx, gy, state = 0, gz = 0) => ({
   intensity: 65,
   temperature: 3200,
 });
+// 梯柱列：所有预设共享的三根基底轨条（id 保持一致，切换场景时视为固定设施）。
+export const PILLAR_COLUMNS = [3, 23, 43];
+const pillarItems = () => PILLAR_COLUMNS.map((gx, i) => item('p' + (i + 1), 'pillar', gx, 0));
 export const EXHIBITIONS = [
   {
     id: 'flat',
@@ -378,6 +381,7 @@ export const EXHIBITIONS = [
       item('d', 'lamp', 8, 45, 1),
       item('e', 'lamp', 28, 45, 1),
       item('f', 'sign', 27, 14),
+      ...pillarItems(),
     ],
   },
   {
@@ -393,6 +397,7 @@ export const EXHIBITIONS = [
       item('d', 'lamp', 8, 45, 1),
       item('e', 'lamp', 28, 45, 1),
       item('f', 'sign', 27, 14),
+      ...pillarItems(),
     ],
   },
   {
@@ -408,6 +413,7 @@ export const EXHIBITIONS = [
       item('d', 'lamp', 8, 43, 1),
       item('e', 'lamp', 28, 43, 1),
       item('f', 'sign', 27, 14),
+      ...pillarItems(),
     ],
   },
   {
@@ -423,6 +429,7 @@ export const EXHIBITIONS = [
       item('d', 'lamp', 8, 45, 1),
       item('e', 'lamp', 28, 45, 1),
       item('f', 'sign', 27, 14),
+      ...pillarItems(),
     ],
   },
 ];
@@ -448,6 +455,7 @@ export const PRESETS = [
       item('d', 'sign', 7, 36),
       item('e', 'lamp', 47, 49, 1),
       item('f', 'acoustic', 23, 34),
+      ...pillarItems(),
     ],
   },
   {
@@ -463,6 +471,7 @@ export const PRESETS = [
       item('d', 'shelf', 43, 20),
       item('e', 'sign', 27, 46),
       item('f', 'worktop', 23, 14, 1),
+      ...pillarItems(),
     ],
   },
   {
@@ -479,6 +488,7 @@ export const PRESETS = [
       item('e', 'scent', 28, 9),
       item('f', 'shelf', 23, 19),
       item('g', 'sign', 27, 48),
+      ...pillarItems(),
     ],
   },
 ];
@@ -551,11 +561,25 @@ export function clampPosition(a) {
 }
 export function conflict(a, items) {
   const e = envelope(a);
+  const aPillar = MODULES[a.type]?.family === '梯柱';
   return items.find((b) => {
     if (b.id === a.id) return false;
+    // 梯柱是挂载基底：与节点、拓展的包络重叠不算冲突；梯柱之间仍互斥。
+    if (aPillar !== (MODULES[b.type]?.family === '梯柱')) return false;
     const f = envelope(b);
     return e.min.every((v, i) => v < f.max[i] && e.max[i] > f.min[i]);
   });
+}
+// 节点基于梯柱定位：存在梯柱时，节点的横向格位吸附到最近的梯柱列。
+export function snapToPillar(a, items) {
+  if (MODULES[a.type]?.family !== '节点') return a;
+  const pillars = items.filter((b) => b.id !== a.id && MODULES[b.type]?.family === '梯柱');
+  if (!pillars.length) return a;
+  const gx = pillars.reduce(
+    (best, p) => (Math.abs(p.gx - a.gx) < Math.abs(best - a.gx) ? p.gx : best),
+    pillars[0].gx,
+  );
+  return gx === a.gx ? a : { ...a, gx };
 }
 export function position(a) {
   const c = cells(a);

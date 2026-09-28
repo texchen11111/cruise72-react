@@ -9,6 +9,7 @@ import {
   position,
   conflict,
   findSpace,
+  snapToPillar,
 } from '../src/model/index.js';
 let checks = 0;
 const ok = (v, m) => {
@@ -50,6 +51,34 @@ ok(!conflict(cabinet, [b]), 'closed front space');
 ok(conflict({ ...cabinet, state: 1 }, [b]), 'door reserve');
 const deep = { ...a, id: 'deep', gz: 5 };
 ok(!conflict(deep, [a]), 'same XY different Z');
+
+// 梯柱层级：节点吸附到最近的梯柱列，梯柱与挂载件共存不判冲突。
+const pil = (id, gx) => ({ id, type: 'pillar', gx, gy: 0, gz: 0, state: 0 });
+const node = (gx) => ({ id: 'n', type: 'block', gx, gy: 5, gz: 0, state: 0 });
+const p3 = pil('p1', 3),
+  p23 = pil('p2', 23),
+  p43 = pil('p3', 43);
+ok(snapToPillar(node(4), [p3, p23, p43]).gx === 3, 'node snaps to nearest pillar column');
+ok(snapToPillar(node(9), [p3, p23, p43]).gx === 3, 'node snaps left pillar');
+ok(snapToPillar(node(30), [p3, p23, p43]).gx === 23, 'node snaps middle pillar');
+ok(snapToPillar(node(60), [p3, p23, p43]).gx === 43, 'node snaps right pillar');
+ok(snapToPillar(node(9), []).gx === 9, 'no pillars, no snap');
+const panel9 = { id: 'x', type: 'panel', gx: 9, gy: 5, gz: 0, state: 0 };
+ok(snapToPillar(panel9, [p3]).gx === 9, 'extensions never snap to pillars');
+ok(
+  !conflict({ id: 'm', type: 'panel', gx: 3, gy: 10, gz: 0, state: 0 }, [p3]),
+  'pillar coexists with mounted module',
+);
+ok(conflict(pil('q', 3), [p3]), 'pillars still exclude each other');
+for (const p of [...PRESETS, ...EXHIBITIONS]) {
+  const pillars = p.items.filter((a) => a.type === 'pillar');
+  ok(pillars.length === 3, p.id + ' has three pillars');
+  const nodes = p.items.filter((a) => M[a.type].family === '节点');
+  ok(
+    nodes.every((a) => pillars.some((q) => q.gx === a.gx)),
+    p.id + ' nodes sit on pillar columns',
+  );
+}
 ok(
   cells({ type: 'worktop', state: 0 }).join() == cells({ type: 'worktop', state: 1 }).join(),
   'fold reserve retained',

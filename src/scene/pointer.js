@@ -89,7 +89,13 @@ export function setupPointer(ctx, store) {
   });
   const release = () => {
     if (drag?.moved) {
-      store.changed();
+      if (drag.kind === 'resize') {
+        store.changed();
+      } else {
+        // 以提交模式重放最终格位：触发父子归一（拓展→节点、节点→梯柱）。
+        const a = ctx.items.find((x) => x.id === drag.id);
+        if (a) store.moveItem(a.id, { gx: a.gx, gy: a.gy, gz: a.gz }, true);
+      }
     }
     if (drag?.blocked) store.toast('该位置超界或重叠，保留上一个可用格位');
     drag = null;
