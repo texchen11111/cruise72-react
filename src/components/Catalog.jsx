@@ -1,30 +1,45 @@
 import { MODULES as M } from '../model/index.js';
 import { ModelPreview } from './ModelPreview.jsx';
 export function Catalog({ state, store }) {
+  const families = ['全部', '梯柱', '节点', '拓展'];
+  const subkinds = Array.from(
+    new Set(
+      Object.values(M)
+        .filter((m) => state.familyFilter === '全部' || m.family === state.familyFilter)
+        .map((m) => m.subkind),
+    ),
+  );
   return (
     <aside className="catalog">
       <div className="eyebrow">72+ / COLLECTION</div>
       <h2>模块系列</h2>
       <div className="sub">48 mm 基础节点 · 整数组合</div>
-      <div className="filter" role="group" aria-label="模块分类">
-        {['全部', '节点', '连接件', '展陈', '氛围', '服务'].map((x) => (
+      <div className="filter" role="group" aria-label="模块大类">
+        {families.map((x) => (
           <button
             key={x}
             data-filter={x}
-            className={x === state.filter ? 'active' : ''}
-            onClick={() => store.setFilter(x)}
+            className={x === state.familyFilter ? 'active' : ''}
+            onClick={() => store.setFamilyFilter(x)}
           >
             {x}
           </button>
         ))}
       </div>
+      <label className="subfilter">
+        <span>细分</span>
+        <select value={state.subkindFilter} onChange={(e) => store.setSubkindFilter(e.target.value)}>
+          <option value="全部">全部细分</option>
+          {subkinds.filter(Boolean).sort().map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+      </label>
       <div className="cards">
         {Object.entries(M)
           .sort((a, b) => a[1].code.localeCompare(b[1].code))
           .filter(
             ([k, m]) =>
-              state.filter === '全部' ||
-              (state.filter === '节点' ? k === 'block' : m.kind === state.filter),
+              (state.familyFilter === '全部' || m.family === state.familyFilter) &&
+              (state.subkindFilter === '全部' || m.subkind === state.subkindFilter),
           )
           .map(([k, m]) => (
             <button
@@ -48,8 +63,7 @@ export function Catalog({ state, store }) {
           ))}
       </div>
       <div className="catalognote">
-        <b>节点 × 连接件 × 展示面</b>从一个48
-        mm立方节点开始，以横杆和承托件连接不同展示面。组合整体按整数格占位，三轴移动以48 mm为一步。
+        <b>梯柱 × 节点 × 拓展</b>先固定 Rhino 梯柱，再把节点挂到梯柱，最后把不同界面和功能附件挂到节点。组合整体按整数格占位，三轴移动以48 mm为一步。
         <br />
         <br />
         拖动调整左右 / 上下位置；右侧调节离墙层数。网格不等同于已经实现的安装点。

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { PRESETS, EXHIBITIONS, MODULES } from '../model/index.js';
 import { ModelPreview } from './ModelPreview.jsx';
 import { createPlannerScene } from '../scene/createPlannerScene.js';
+import { createFallbackPlanner } from '../scene/fallbackPlanner.js';
 export function Stage({ state, store, onDownload }) {
   const container = useRef(null),
     engine = useRef(null);
@@ -9,8 +10,9 @@ export function Stage({ state, store, onDownload }) {
     try {
       engine.current = createPlannerScene(container.current, store);
     } catch (e) {
+      engine.current = createFallbackPlanner(container.current, store);
       store.setError(
-        '三维画面暂时无法启动。请使用支持 WebGL 的新版浏览器并开启图形加速。仍可通过模块库、设置和清单查看方案。',
+        '当前浏览器无法启动 WebGL，已切换为平面预览；模块库、设置、清单和尺寸调整仍可使用。',
       );
       console.error(e);
     }
@@ -133,7 +135,7 @@ export function Stage({ state, store, onDownload }) {
         </div>
         <div className="node-summary">
           <b>48 mm 节点 × {state.items.reduce((n, a) => n + MODULES[a.type].mount, 0)}</b>
-          <span>节点 → 连接件 → 展示面</span>
+          <span>梯柱 → 节点 → 拓展</span>
         </div>
         {state.transition && (
           <div className="transition-note" role="status">

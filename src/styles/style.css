@@ -582,6 +582,48 @@ details p {
 .loaderror[hidden] {
   display: none;
 }
+.fallback-plan {
+  position: absolute;
+  inset: 0;
+  padding: 74px 24px 24px;
+  background: #eef0f3;
+}
+.fallback-title {
+  position: absolute;
+  top: 19px;
+  left: 24px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+.fallback-wall {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid #cfd4da;
+  background: repeating-linear-gradient(0deg, transparent 0 7.98%, #ccd3dc 8% 8.12%), repeating-linear-gradient(90deg, transparent 0 7.98%, #ccd3dc 8% 8.12%), #f8f8f7;
+  box-shadow: inset 0 0 0 10px #e3e5e6;
+}
+.fallback-module {
+  position: absolute;
+  min-width: 15px;
+  min-height: 15px;
+  overflow: hidden;
+  padding: 3px;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.88;
+}
+.fallback-module.selected {
+  border-color: #ed8e40;
+  box-shadow: 0 0 0 2px #3158e8;
+  z-index: 2;
+}
 .switchbtn {
   min-width: 70px;
 }
@@ -1006,6 +1048,58 @@ header {
 }
 .filter .active {
   background: var(--ink);
+}
+.subfilter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -7px 0 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.subfilter select {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 6px 5px;
+  color: var(--ink);
+}
+.familyline {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 11px 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.familyline b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.interfacechips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 5px 0 12px;
+}
+.interfacechips span {
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 2px 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.dimensiontitle {
+  margin: 16px 0 6px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.unitread {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
 }
 .cards {
   gap: 18px 10px;

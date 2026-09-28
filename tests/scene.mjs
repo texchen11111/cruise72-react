@@ -82,7 +82,7 @@ for (const item of ctx.items) {
   });
   assert.ok(meshes > 0, item.type);
 }
-assert.equal(ctx.models.size, 12);
+assert.equal(ctx.models.size, 17);
 builder.buildProps();
 ctx.items = ctx.items.map((item) => ({ ...item, state: 1 }));
 const animation = createAnimation(ctx);
@@ -158,5 +158,5 @@ ctx.materials.shared.silver.addEventListener('dispose', () => {
 builder.dispose(ctx.models.get('cabinet'));
 assert.equal(sharedDisposed, false, 'shared materials survive individual module removal');
 console.log(
-  'Scene: 12 real geometries, live animation, transitions, book state, drop and cleanup passed.',
+  'Scene: 17 real geometries, live animation, transitions, book state, drop and cleanup passed.',
 );

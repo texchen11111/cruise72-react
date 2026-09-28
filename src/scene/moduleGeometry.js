@@ -1,6 +1,8 @@
 import * as THREE from 'three';
-import { MODULES as M, position } from '../model/index.js';
+import { MODULES as M, position, cells } from '../model/index.js';
 import { cube, cylinder } from './primitives.js';
+import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
+import { buildSurface } from './models/surfaces.js';
 
 export function createModuleBuilder(ctx) {
   const { mat, textTexture, shared } = ctx.materials;
@@ -16,11 +18,13 @@ export function createModuleBuilder(ctx) {
     const m = M[a.type],
       g = new THREE.Group(),
       colored = mat(a.color),
-      [w, h, d] = [m.w, m.h, m.d];
+      [w, h, d] = cells(a).map((v) => v * 0.048);
     g.userData.id = a.id;
     g.position.set(...position(a));
     let act = null;
-    if (a.type === 'block') cube(g, w, h, d, 0, 0, d / 2, colored);
+    if (a.type === 'pillar') buildRhinoPillar(g, w, h, d, silver, dark);
+    else if (a.type === 'block') buildRhinoNode(g, w, h, d, silver, orange, dark);
+    else if (['pegboard', 'mesh', 'metal', 'rope'].includes(a.type)) buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange });
     else if (a.type === 'panel' || a.type === 'acoustic' || a.type === 'sign') {
       const depth = a.type === 'panel' ? 0.006 : 0.025;
       cube(g, w, h, depth, 0, 0, 0.025, a.type === 'acoustic' ? mat('#829f9e') : white);
@@ -170,6 +174,7 @@ export function createModuleBuilder(ctx) {
     ctx.scene.add(g);
     g.userData.type = a.type;
     g.userData.color = a.color;
+    g.userData.sizeKey = cells(a).join('x');
     ctx.models.set(a.id, g);
     return g;
   }

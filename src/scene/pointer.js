@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MODULES as M, ORIGIN, PITCH, valid, conflict } from '../model/index.js';
+import { cells } from '../model/index.js';
 
 export function setupPointer(ctx, store) {
   const { listen, stage } = ctx;
@@ -20,6 +21,20 @@ export function setupPointer(ctx, store) {
   listen(canvas, 'pointerdown', (e) => {
     if (e.button !== 0) return;
     get(e);
+    const handleHit = ray.intersectObjects(ctx.resizeHandles ? [...ctx.resizeHandles.children] : [], false)[0];
+    if (handleHit?.object.userData.resizeHandle) {
+      const { id, axis } = handleHit.object.userData.resizeHandle;
+      const a = ctx.items.find((x) => x.id === id);
+      if (!a) return;
+      store.select(id);
+      plane.constant = -a.gz * PITCH;
+      const start = point(e);
+      if (!start) return;
+      drag = { kind: 'resize', id, axis, start, a: { ...a, sizeCells: cells(a) }, px: e.clientX, py: e.clientY, moved: false, blocked: false };
+      ctx.orbit.enabled = false;
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
     const hit = ray.intersectObjects([...ctx.models.values()], true)[0];
     if (!hit) return;
     const a = ctx.items.find((x) => x.id === hit.object.userData.itemId);
@@ -45,7 +60,22 @@ export function setupPointer(ctx, store) {
     const p = point(e);
     if (!p) return;
     const a = ctx.items.find((x) => x.id === drag.id),
-      test = {
+      resize = drag.kind === 'resize';
+    if (resize) {
+      const next = [...drag.a.sizeCells];
+      const index = { x: 0, y: 1, z: 2 }[drag.axis];
+      const delta = drag.axis === 'x' ? Math.round((p.x - drag.start.x) / PITCH) : drag.axis === 'y' ? Math.round((p.y - drag.start.y) / PITCH) : Math.round((p.z - drag.start.z) / PITCH);
+      next[index] = Math.max(1, drag.a.sizeCells[index] + delta);
+      const test = { ...a, sizeCells: next };
+      drag.blocked = !valid(test) || !!conflict(test, ctx.items);
+      ctx.selectionBox.material.color.set(drag.blocked ? '#e25743' : '#3158e8');
+      if (!drag.blocked) {
+        store.resizeItem(a.id, next);
+        drag.moved = true;
+      }
+      return;
+    }
+    const test = {
         ...a,
         gx: drag.a.gx + Math.round((p.x - drag.start.x) / PITCH),
         gy: drag.a.gy + Math.round((p.y - drag.start.y) / PITCH),

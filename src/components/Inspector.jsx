@@ -36,6 +36,25 @@ function Coordinate({ a, axis, index, store }) {
     </Fragment>
   );
 }
+function Dimension({ a, axis, index, store }) {
+  const base = cells(a);
+  const [draft, setDraft] = useState(String(base[index]));
+  useEffect(() => setDraft(String(cells(a)[index])), [a.id, a.sizeCells, a.state]);
+  const commit = () => {
+    const value = Math.max(1, Math.round(Number(draft)));
+    const next = cells(a);
+    next[index] = value;
+    store.resizeItem(a.id, next);
+    setDraft(String(store.getSnapshot().items.find((x) => x.id === a.id) ? cells(store.getSnapshot().items.find((x) => x.id === a.id))[index] : base[index]));
+  };
+  return (
+    <div className="row">
+      <label htmlFor={'size-' + axis}>{['宽度', '高度', '深度'][index]} / 格</label>
+      <input id={'size-' + axis} type="number" min="1" max={GRID[index]} step="1" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && commit()} />
+      <span className="unitread">{base[index] * 48} mm</span>
+    </div>
+  );
+}
 function ModuleDetails({ a, store }) {
   const m = M[a.type],
     parts = assembly(a.type);
@@ -51,6 +70,8 @@ function ModuleDetails({ a, store }) {
         </div>
       </div>
       <span className="tag">{m.level}</span>
+      <div className="familyline"><b>{m.family}</b><span>{m.subkind}</span></div>
+      <div className="interfacechips">{m.interfaces?.map((x) => <span key={x}>{x}</span>)}</div>
       <details className="assembly-details">
         <summary>节点与连接构成</summary>
         <div className="assembly-spec">
@@ -63,7 +84,7 @@ function ModuleDetails({ a, store }) {
       <p className="intro">{m.intro}</p>
       <div className="spec">
         <b>
-          {Math.round(m.w * 1000)} × {Math.round(m.h * 1000)} × {Math.round(m.d * 1000)} mm
+          {cells(a).map((v) => v * 48).join(' × ')} mm
         </b>
         {m.anchor}
       </div>
@@ -74,6 +95,8 @@ function ModuleDetails({ a, store }) {
       {['gx', 'gy', 'gz'].map((axis, index) => (
         <Coordinate key={axis} a={a} axis={axis} index={index} store={store} />
       ))}
+      <div className="dimensiontitle">尺寸可调 · 拖动画布上的蓝色控制点</div>
+      {['x', 'y', 'z'].map((axis, index) => <Dimension key={axis} a={a} axis={axis} index={index} store={store} />)}
       <p className="warning">
         {a.gz ? '离墙叠放：需要独立连接件及承力结构。' : '贴墙层：需以适配背板连接真实梯柱。'}
       </p>

@@ -51,11 +51,11 @@ const click = async (selector) => {
 };
 try {
   await act(() => root.render(React.createElement(App, { store })));
-  assert.equal(document.querySelectorAll('[data-add]').length, 12);
+  assert.equal(document.querySelectorAll('[data-add]').length, 17);
   await click('[data-filter="节点"]');
-  assert.equal(document.querySelectorAll('[data-add]').length, 1);
-  await click('[data-filter="氛围"]');
-  assert.equal(document.querySelectorAll('[data-add]').length, 3);
+  assert.equal(document.querySelectorAll('[data-add]').length, 2);
+  await click('[data-filter="拓展"]');
+  assert.equal(document.querySelectorAll('[data-add]').length, 14);
   await click('[data-filter="全部"]');
   await click('[data-add="block"]');
   assert.equal(store.getSnapshot().items.length, 7);
