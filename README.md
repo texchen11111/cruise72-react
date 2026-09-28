@@ -7,6 +7,7 @@
 ## 先找到你需要的内容
 
 - [网站在哪里，代码在哪里](#网站在哪里代码在哪里)
+- [两个本地副本与实验分支](#两个本地副本与实验分支)
 - [先学会使用网站](#先学会使用网站)
 - [几个词是什么意思](#几个词是什么意思)
 - [第一次在电脑上运行](#第一次在电脑上运行)
@@ -37,6 +38,22 @@ Cloudflare 生产 Worker 的已核验地址是 [`cruise72-react.2161598874.worke
 安全设置需要在 Cloudflare 控制台的 Worker 主机名范围内检查 WAF、Bot Fight Mode 和 Security Level。仓库代码无法读取或修改账号级防火墙策略；修改后请用无登录窗口测试生产地址，确认访客不会收到 403。
 
 同步基线：当前源码以 GitHub `main` 和本地工作目录的最新提交为准；发布前必须通过测试、构建和 Sites 部署检查。设计迭代记录见 [VERSION_HISTORY.md](VERSION_HISTORY.md)。
+
+## 两个本地副本与实验分支
+
+电脑里有两个同名的工作目录，分工不同，请不要混用：
+
+| 副本 | 路径 | 角色 |
+| --- | --- | --- |
+| 正式工作副本 | `/Users/tex/Pictures/邮轮72变/cruise72-react` | 唯一的开发副本：所有修改、测试、提交都在这里进行 |
+| Codex 参考副本 | `/Users/tex/Documents/Codex/2026-09-22/openai-hosting-json-id-react/work/site` | 历史参考：保持与 GitHub `main` 一致，不在其中开发或直接发布 |
+
+约定：
+
+- 任何改动先落在正式工作副本，跑通 `npm ci && npm test && npm run build` 后再提交推送到 `main`。
+- 试验性方案如果测试没通过、或被新方案取代，既不直接丢弃，也不留在副本工作区里：把它提交到 `archive/…` 归档分支（例如 `archive/mounting-experiment`）并推送，提交说明里注明“仅供参考、不要合并”。
+- Codex 副本只用于查阅历史实现；需要同步最新代码时执行 `git fetch origin && git reset --hard origin/main`。
+- GitHub `main` 是唯一事实来源：Cloudflare 会自动跟随它构建部署，Sites 需要单独手动发布。
 
 原 Sites 项目配置保存在 [`.openai/hosting.json`](.openai/hosting.json)，项目 ID 为 `appgprj_6aaa5e1a9544819193287ca435127a86`。更新这个网站时要继续沿用它，保留原链接和公开权限。这个文件记录了项目关联和输出目录，不能仅凭文件判断网站当前访问权限。
 
