@@ -59,6 +59,21 @@ try {
   s.setPreset(1);
   s.setPreset(0);
   assert.equal(s.getSnapshot().exhibition, 3);
+  const h = createPlannerStore();
+  const pillar = h.addItem('pillar', 0, 0, 0, null, true);
+  const node = h.addItem('block', 4, 4, 0, null, true);
+  assert.equal(node.parentId, pillar.id);
+  const extension = h.addItem('panel', 8, 4, 0, null, true);
+  assert.equal(extension.parentId, node.id);
+  const before = h.getSnapshot().items.map((a) => ({ id: a.id, gx: a.gx, gy: a.gy }));
+  assert.equal(h.moveItem(pillar.id, { gx: 2 }), true);
+  for (const a of h.getSnapshot().items.filter((x) => [node.id, extension.id].includes(x.id))) {
+    const old = before.find((x) => x.id === a.id);
+    assert.equal(a.gx, old.gx + 2);
+  }
+  assert.equal(h.resizeItem(extension.id, [16, 12, 1]), true);
+  assert.deepEqual(h.exportData().modules.find((a) => a.id === extension.id).size_cells, [16, 12, 1]);
+  h.destroy();
   console.log(
     'React store: immutable snapshots, add/duplicate/remove, movement/collision, presets, states, export and autoplay passed.',
   );

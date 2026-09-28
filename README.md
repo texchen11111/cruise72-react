@@ -20,7 +20,7 @@
 
 ## 网站在哪里，代码在哪里
 
-本次同步以 Sites 已发布的 V4.5 内容为基础，合入 GitHub 的维护指南、目录整理和 Cloudflare 配置。两个平台仍是独立发布，后续修改也需要分别核验。
+本次同步以 Sites 已发布的 V4.5 内容为基础，加入 Rhino V3 约束、梯柱 → 节点 → 拓展的层级关系、可拖动尺寸控制点和新的平面界面模块。GitHub 与 Cloudflare 继续保存同一份源码，Sites 使用同一个原项目 ID 发布。
 
 | 位置 | 它的用途 | 更新方式 |
 | --- | --- | --- |
@@ -33,7 +33,7 @@
 
 Cloudflare 的访客地址请在上述后台的域名或访问入口中查看。这份指南尚未记录经核验的配置器 Cloudflare 公开域名；后台链接和原项目介绍页都不能代替它。
 
-同步基线：Sites V4.5 为 `0b84b0c`；GitHub 新手指南为 `8a410fd`。同步时保留双方历史，后续发布应以最新提交检查和 Sites 部署结果为准。设计迭代记录见 [VERSION_HISTORY.md](VERSION_HISTORY.md)。
+同步基线：当前源码以 GitHub `main` 和本地工作目录的最新提交为准；发布前必须通过测试、构建和 Sites 部署检查。设计迭代记录见 [VERSION_HISTORY.md](VERSION_HISTORY.md)。
 
 原 Sites 项目配置保存在 [`.openai/hosting.json`](.openai/hosting.json)，项目 ID 为 `appgprj_6aaa5e1a9544819193287ca435127a86`。更新这个网站时要继续沿用它，保留原链接和公开权限。这个文件记录了项目关联和输出目录，不能仅凭文件判断网站当前访问权限。
 
@@ -43,9 +43,9 @@ Cloudflare 的访客地址请在上述后台的域名或访问入口中查看。
 
 进入工作区后：
 
-1. **左侧是模块库**：点击模块，或把它拖进墙面。分类按钮可以筛选模块。
-2. **中间是三维工作区**：点击选中模块，拖动改变左右、上下位置；在空白处拖动可以旋转观察角度。还可以切换“正视”“透视”、显示网格、复位视角。
-3. **右侧是模块设置**：调整位置、颜色，复制或移除模块。展柜、活动台、灯具、香氛和书托有相应开关或取阅操作，灯具还有亮度、色温设置。
+1. **左侧是模块库**：先按“梯柱、节点、拓展”三大类筛选，再按细分类型筛选；点击模块，或把它拖进墙面。预设场景仍独立位于工作区下方，负责表达“展陈、共创、交流、休憩”等功能组合。
+2. **中间是三维工作区**：点击选中模块，拖动改变左右、上下位置；选中后拖动蓝色、橙色控制点可改变宽度和高度，右侧也可以直接输入尺寸格数。上级移动时，已挂接的下级模块会跟随；在空白处拖动可以旋转观察角度。
+3. **右侧是模块设置**：调整位置、尺寸、颜色，查看接口方式，复制或移除模块。展柜、活动台、灯具、香氛和书托有相应开关或取阅操作，灯具还有亮度、色温设置。
 4. **下方是四种空间**：展陈空间、共创空间、交流市集、休憩空间。展陈空间还包含平面悬展、层架陈列、翻阅展示、混合策展四种配置。“演示场景切换”约每 6.5 秒切换；进入展陈空间后会循环其中的四种配置。
 5. **保存结果**：“导出方案”下载 JSON 文件，记录模块和位置；“存图”下载三维画面的 PNG 图片。
 
@@ -131,10 +131,12 @@ npm run dev
 | “设计逻辑”弹窗里的文字 | [`src/components/AboutDialog.jsx`](src/components/AboutDialog.jsx) | 说明文字及弹窗内容 |
 | 模块卡片上的线条图标 | [`src/components/Icon.jsx`](src/components/Icon.jsx) | SVG 图标，也就是用线条坐标画出的图形 |
 | 字号、页面颜色、边距、手机排版 | [`src/styles/style.css`](src/styles/style.css) | 顶部颜色变量；底部 `@media` 管理不同屏幕宽度的布局 |
-| 模块名称、介绍、尺寸、四种预设布局 | [`src/model/index.js`](src/model/index.js) | `MODULES` 是模块资料；`sizes` 是占位格数；`PRESETS` 是四种空间；`EXHIBITIONS` 是展陈子配置 |
-| 添加、复制、删除、移动、开关的执行规则 | [`src/store/index.js`](src/store/index.js) | 保存当前方案，调用模型规则，通知界面更新 |
-| 鼠标点选、拖动、从模块库拖入墙面 | [`src/scene/pointer.js`](src/scene/pointer.js) | 将鼠标动作转为位置，再交给 store 处理 |
-| 展柜、层板、灯具等三维形状与梯柱 | [`src/scene/moduleGeometry.js`](src/scene/moduleGeometry.js) | `buildModule` 生成 12 类模块；`buildProps` 生成固定梯柱 |
+| 模块名称、分类、尺寸、四种预设布局 | [`src/model/index.js`](src/model/index.js) | `MODULES` 是模块资料；`family/subkind` 是三级分类；`sizes` 是占位格数；`PRESETS` 是四种空间；`EXHIBITIONS` 是展陈子配置 |
+| 添加、复制、删除、移动、尺寸和父子跟随规则 | [`src/store/index.js`](src/store/index.js) | 保存当前方案，调用模型规则；`parentId` 表示梯柱 → 节点 → 拓展的挂接关系 |
+| 鼠标点选、位置拖动、尺寸控制点、从模块库拖入墙面 | [`src/scene/pointer.js`](src/scene/pointer.js) | 将鼠标动作转为位置或格尺寸，再交给 store 处理 |
+| 展柜、层板、灯具和基础模块的三维形状 | [`src/scene/moduleGeometry.js`](src/scene/moduleGeometry.js) | 负责把模块组合成 Three.js 场景；新 Rhino 与界面模型集中在 `src/scene/models/` |
+| Rhino V3 梯柱、节点的尺寸约束 | [`src/scene/models/rhino.js`](src/scene/models/rhino.js)、[`public/models/rhino/spec.json`](public/models/rhino/spec.json) | 记录 `墙1111111111.3dm` 的毫米单位、0.01 mm 容差和 48 / 9 / 6 / 30 / 6 mm 接口尺寸；加工以原始 3dm 为准 |
+| 软质、洞洞板、网状、金属和系绳界面 | [`src/scene/models/surfaces.js`](src/scene/models/surfaces.js) | 新拓展模型统一放在 `src/scene/models/`，分类资料仍在 `src/model/index.js` |
 | 三维长方体、圆柱这些基础形状 | [`src/scene/primitives.js`](src/scene/primitives.js) | 被多个模型重复使用，修改会影响多个地方 |
 | 金属、玻璃、表面颜色和文字贴图 | [`src/scene/materials.js`](src/scene/materials.js) | 玻璃透明度、表面质感、展板文字的绘制方式 |
 | 墙面、地面、相机、灯光、网格 | [`src/scene/environment.js`](src/scene/environment.js) | `init` 初始化环境；`setView` 调整观察位置 |
@@ -142,7 +144,7 @@ npm run dev
 | 自动演示的切换间隔 | [`src/store/index.js`](src/store/index.js) | `togglePlay` 中的定时器；它与三维动画速度分开控制 |
 | JSON 导出的字段和数据格式 | [`src/store/index.js`](src/store/index.js) | `exportData()`；下载文件名在 `App.jsx` |
 
-当前几何生成、鼠标交互、动画分别在 `moduleGeometry.js`、`pointer.js`、`animation.js`，通过 `createPlannerScene.js` 组装。此表描述的是同步后的实际结构。
+当前几何生成、鼠标交互、动画分别在 `moduleGeometry.js`、`pointer.js`、`animation.js`，通过 `createPlannerScene.js` 组装。Rhino 和新界面模型放在 `src/scene/models/`，避免把几何、交互和动画重新混在同一文件。此表描述的是当前实际结构。
 
 另外这些文件通常由有经验的开发者维护：
 
@@ -250,7 +252,8 @@ item(id, type, gx, gy, state, gz)
 
 - **调整已有模块占位**：改 `src/model/index.js` 的 `sizes`。例如 `[14, 11, 6]` 是宽、高、深的格数，不是毫米。文件后面的循环会用格数计算 `w/h/d`，所以只改前面模块资料里的 `w/h/d` 不会成为最终尺寸。
 - **调整实际外形**：检查 `moduleGeometry.js`。有些板厚、灯头和台面长度是单独写在建模代码中的数值，三维建模使用“米”，例如 `0.048` 米等于 48 mm。占位变化不保证这些细节自动跟着改变。
-- **增加新模块类型**：需要补齐 `MODULES` 资料、`sizes` 格数、`moduleGeometry.js` 的形状分支和 `Icon.jsx` 的图标；若有新功能，再补 `Inspector.jsx` 控件、store 规则和动画。
+- **增加新模块类型**：需要补齐 `MODULES` 资料、`family/subkind/interfaces`、`sizes` 格数、`moduleGeometry.js` 的形状分支或 `src/scene/models/` 中的模型函数和 `Icon.jsx` 的图标；若有新功能，再补 `Inspector.jsx` 控件、store 规则和动画。
+- **维护父子关系**：梯柱是基底，节点挂接到梯柱，拓展挂接到节点。新增模块时尽量从左侧先选上级再添加下级；移动上级会带着已挂接的下级一起移动。尺寸调整以当前左下角为锚点，超出网格或碰撞时会拒绝。
 - **调整开门或折叠范围**：同步检查 `cells()`、`envelope()`、`valid()`、`conflict()`。当前展柜开门额外预留前方 14 格；折叠台收拢和展开都保留 14 × 10 × 10 格空间。
 - **增加分类或场景**：分类按钮在 `Catalog.jsx` 中单独列出；场景来自 `PRESETS`，但按钮布局和测试也要检查。当前有些测试明确按 12 类模块、4 种空间及 4 种展陈配置检查，新增后应更新合理的预期，不能直接删除失败的检查。
 

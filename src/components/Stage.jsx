@@ -133,7 +133,7 @@ export function Stage({ state, store, onDownload }) {
         </div>
         <div className="node-summary">
           <b>48 mm 节点 × {state.items.reduce((n, a) => n + MODULES[a.type].mount, 0)}</b>
-          <span>节点 → 连接件 → 展示面</span>
+          <span>梯柱 → 节点 → 拓展</span>
         </div>
         {state.transition && (
           <div className="transition-note" role="status">

@@ -211,6 +211,60 @@ MODULES.bookrest = extension(
   '让图录与艺术书以倾斜角度展示，可取阅后归位。',
   '四个节点连接背架；带机械止挡的倾斜支撑托住展示板，底部挡边承托书刊。',
 );
+MODULES.pillar = {
+  name: 'V3 梯柱段',
+  en: 'LADDER PILLAR',
+  code: '12',
+  kind: '梯柱',
+  draw: 'pillar',
+  mount: 0,
+  level: 'Rhino V3 基底',
+  anchor: '墙体固定 / 梯柱基底',
+  intro: '沿用 Rhino V3 梯柱作为所有节点和拓展的移动基准。',
+  mechanism: '梯柱固定在墙体适配位置；节点只能沿梯柱的网格位置移动，拓展再挂接到节点。',
+  parts: 'Rhino V3 梯柱、背部固定件、端部止挡。',
+  note: '尺寸来源于墙1111111111.3dm；网页模型用于布局验证，工程加工仍以原始 Rhino 文件为准。',
+};
+MODULES.pegboard = extension(
+  '洞洞板界面',
+  'PEGBOARD',
+  '13',
+  'pegboard',
+  '拓展',
+  4,
+  '用规则孔阵列承接挂钩、层板和小型收纳件。',
+  '背部节点承托洞洞板，孔阵列允许卡扣、插接和磁吸附件重复换位。',
+);
+MODULES.mesh = extension(
+  '网状界面',
+  'MESH',
+  '14',
+  'mesh',
+  '拓展',
+  4,
+  '轻量网面用于夹持图纸、照片和可替换样片。',
+  '四角节点张紧网面，夹持、系绳或卡扣附件不改变基础节点位置。',
+);
+MODULES.metal = extension(
+  '金属界面',
+  'METAL PANEL',
+  '15',
+  'metal',
+  '拓展',
+  4,
+  '薄金属板为磁吸、夹持和挂钩提供稳定界面。',
+  '金属面板由四个节点定位，磁吸附件只负责定位，承力仍回到节点和梯柱。',
+);
+MODULES.rope = extension(
+  '系绳挂面',
+  'ROPE GRID',
+  '16',
+  'rope',
+  '拓展',
+  4,
+  '用绳网和吊点形成轻质、可调的悬挂界面。',
+  '节点提供固定吊点，绳索通过系绳和快挂调整张力，避免把绳结当作主承力件。',
+);
 const sizes = {
   rail: [15, 1, 1],
   tray: [14, 3, 4],
@@ -224,10 +278,77 @@ const sizes = {
   sign: [6, 4, 1],
   worktop: [14, 10, 10],
   acoustic: [14, 15, 1],
+  pillar: [1, 48, 1],
+  pegboard: [14, 12, 1],
+  mesh: [14, 12, 1],
+  metal: [14, 12, 1],
+  rope: [14, 12, 1],
 };
 for (const [k, m] of Object.entries(MODULES)) {
   m.cells = sizes[k];
   [m.w, m.h, m.d] = m.cells.map((v) => v * PITCH);
+}
+const familyByType = {
+  pillar: '梯柱',
+  block: '节点',
+  rail: '节点',
+  panel: '拓展',
+  acoustic: '拓展',
+  pegboard: '拓展',
+  mesh: '拓展',
+  metal: '拓展',
+  rope: '拓展',
+  cabinet: '拓展',
+  shelf: '拓展',
+  tray: '拓展',
+  bookrest: '拓展',
+  lamp: '拓展',
+  scent: '拓展',
+  sign: '拓展',
+  worktop: '拓展',
+};
+const subkindByType = {
+  pillar: 'V3 梯柱',
+  block: '基础节点',
+  rail: '横向连接节点',
+  panel: '平面界面',
+  acoustic: '软质界面',
+  pegboard: '洞洞板界面',
+  mesh: '网状界面',
+  metal: '金属界面',
+  rope: '绳挂界面',
+  cabinet: '围护拓展',
+  shelf: '承托拓展',
+  tray: '承托拓展',
+  bookrest: '承托拓展',
+  lamp: '功能拓展',
+  scent: '功能拓展',
+  sign: '功能拓展',
+  worktop: '功能拓展',
+};
+const interfacesByType = {
+  pillar: ['固定', '背板适配'],
+  block: ['插接', '磁吸', '卡扣'],
+  rail: ['插接', '卡扣'],
+  panel: ['夹持', '插接'],
+  acoustic: ['插接', '卡扣'],
+  pegboard: ['卡扣', '插接', '磁吸'],
+  mesh: ['夹持', '系绳', '卡扣'],
+  metal: ['磁吸', '夹持', '卡扣'],
+  rope: ['系绳', '挂钩'],
+  cabinet: ['插接', '卡扣'],
+  shelf: ['插接', '卡扣'],
+  tray: ['插接', '卡扣'],
+  bookrest: ['插接', '卡扣'],
+  lamp: ['插接', '夹持'],
+  scent: ['插接', '卡扣'],
+  sign: ['夹持', '磁吸'],
+  worktop: ['插接', '卡扣'],
+};
+for (const [type, m] of Object.entries(MODULES)) {
+  m.family = familyByType[type];
+  m.subkind = subkindByType[type];
+  m.interfaces = interfacesByType[type] || [];
 }
 MODULES.panel.note = '15 × 12 × 1 格为占位包络，展板本体仍为薄板；夹持厚度与结构需要打样。';
 MODULES.worktop.note =
@@ -362,8 +483,48 @@ export const PRESETS = [
   },
 ];
 export const clone = (x) => JSON.parse(JSON.stringify(x));
+export function parentFamily(type) {
+  if (MODULES[type]?.family === '节点') return '梯柱';
+  if (MODULES[type]?.family === '拓展') return '节点';
+  return null;
+}
+export function normalizeParents(items) {
+  const next = clone(items);
+  for (const a of next) {
+    const wanted = parentFamily(a.type);
+    if (!wanted) {
+      delete a.parentId;
+      continue;
+    }
+    const current = next.find((b) => b.id === a.parentId && MODULES[b.type]?.family === wanted);
+    if (current) continue;
+    const candidates = next.filter((b) => MODULES[b.type]?.family === wanted);
+    if (!candidates.length) {
+      delete a.parentId;
+      continue;
+    }
+    candidates.sort(
+      (x, y) =>
+        Math.abs(x.gx - a.gx) + Math.abs(x.gy - a.gy) - (Math.abs(y.gx - a.gx) + Math.abs(y.gy - a.gy)),
+    );
+    a.parentId = candidates[0].id;
+  }
+  return next;
+}
+export function childrenOf(id, items) {
+  const out = new Set([id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const a of items) if (a.parentId && out.has(a.parentId) && !out.has(a.id)) {
+      out.add(a.id);
+      changed = true;
+    }
+  }
+  return out;
+}
 export function cells(a) {
-  const c = [...MODULES[a.type].cells];
+  const c = [...(a.sizeCells || MODULES[a.type].cells)];
   if (a.type === 'cabinet' && a.state) c[2] += 14;
   return c;
 }
@@ -397,7 +558,7 @@ export function conflict(a, items) {
   });
 }
 export function position(a) {
-  const c = MODULES[a.type].cells;
+  const c = cells(a);
   return [
     ORIGIN[0] + (a.gx + c[0] / 2) * PITCH,
     ORIGIN[1] + (a.gy + c[1] / 2) * PITCH,
@@ -447,6 +608,11 @@ export function assembly(type) {
       sign: '换片框接口',
       worktop: '背架 + 锁定支撑臂',
       acoustic: '轻框连接件',
+      pillar: '墙体固定 / 梯柱基底',
+      pegboard: '洞洞板背框 + 四角节点',
+      mesh: '张紧边框 + 四角节点',
+      metal: '金属背板 + 四角节点',
+      rope: '吊点边框 + 系绳节点',
     }[type],
     surface: {
       block: '无，基础连接单元',
@@ -461,6 +627,11 @@ export function assembly(type) {
       sign: '信息片',
       worktop: '折叠操作面',
       acoustic: '软质面板',
+      pillar: 'Rhino V3 梯柱',
+      pegboard: '规则孔阵列界面',
+      mesh: '夹持网面',
+      metal: '薄金属面板',
+      rope: '绳网与吊点',
     }[type],
   };
 }

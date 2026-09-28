@@ -11,18 +11,23 @@ import {
   clampPosition,
   conflict,
   findSpace,
+  normalizeParents,
+  childrenOf,
+  parentFamily,
 } from '../model/index.js';
 
 // React reads immutable snapshots through useSyncExternalStore. Three.js consumes
 // the same state; it never owns or rewrites the React interface.
 export function createPlannerStore() {
   let state = {
-    items: clone(PRESETS[0].items),
+    items: normalizeParents(clone(PRESETS[0].items)),
     selected: 'b',
     preset: 0,
     exhibition: 0,
     transition: null,
     filter: '全部',
+    familyFilter: '全部',
+    subkindFilter: '全部',
     rightTab: 'detail',
     view: '3d',
     viewRevision: 0,
@@ -62,17 +67,30 @@ export function createPlannerStore() {
   function moveItem(id, patch, commit = true) {
     const a = state.items.find((x) => x.id === id);
     if (!a) return false;
-    if (Object.values(patch).some((v) => !Number.isFinite(v))) {
+    const positionPatch = Object.fromEntries(Object.entries(patch).filter(([k]) => ['gx', 'gy', 'gz'].includes(k)));
+    const hasSize = patch.sizeCells !== undefined;
+    if (Object.values(positionPatch).some((v) => !Number.isFinite(Number(v)))) {
       if (commit) toast('请输入有效格坐标');
       return false;
     }
-    const next = { ...a, ...patch };
+    if (hasSize && (!Array.isArray(patch.sizeCells) || patch.sizeCells.length !== 3 || patch.sizeCells.some((v) => !Number.isFinite(Number(v)) || Number(v) < 1))) {
+      if (commit) toast('尺寸必须是正整数格');
+      return false;
+    }
+    const next = { ...a, ...patch, sizeCells: hasSize ? patch.sizeCells.map((v) => Math.round(Number(v))) : a.sizeCells };
     for (const k of ['gx', 'gy', 'gz']) next[k] = Math.round(next[k]);
-    if (!valid(next) || conflict(next, state.items)) {
+    const moving = childrenOf(id, state.items);
+    const delta = ['gx', 'gy', 'gz'].map((k) => next[k] - a[k]);
+    const subtree = state.items.filter((x) => moving.has(x.id));
+    const moved = subtree.map((x) => ({ ...x, gx: x.gx + delta[0], gy: x.gy + delta[1], gz: x.gz + delta[2] }));
+    const candidate = hasSize ? moved.map((x) => (x.id === id ? next : x)) : moved;
+    const others = state.items.filter((x) => !moving.has(x.id));
+    if (candidate.some((x) => !valid(x) || conflict(x, others) || candidate.some((y) => y.id !== x.id && conflict(x, [y])))) {
       if (commit) toast('超出网格或占位重叠：请换一个位置');
       return false;
     }
-    update({ items: state.items.map((x) => (x.id === id ? next : x)) });
+    const byId = new Map(candidate.map((x) => [x.id, x]));
+    update({ items: state.items.map((x) => byId.get(x.id) || x) });
     if (commit) changed();
     return true;
   }
@@ -99,7 +117,11 @@ export function createPlannerStore() {
       toast('此层没有可用位置，请调整坐标或移除模块');
       return;
     }
+    const selected = state.items.find((x) => x.id === state.selected);
+    const wanted = parentFamily(type);
+    const parent = wanted && selected && M[selected.type]?.family === wanted ? selected : null;
     const a = { ...free, id: 'u' + uid++ };
+    if (parent) a.parentId = parent.id;
     update({ items: [...state.items, a], selected: a.id, rightTab: 'detail' });
     changed();
     toast('已添加' + M[type].name + ' · ' + M[type].cells.join(' × ') + ' 格');
@@ -107,7 +129,7 @@ export function createPlannerStore() {
   }
   function applyLayout(i, exhibition) {
     const layout = i === 0 ? EXHIBITIONS[exhibition] : PRESETS[i];
-    const next = clone(layout.items);
+    const next = normalizeParents(clone(layout.items));
     for (const a of next) {
       const old = state.items.find((b) => b.id === a.id && b.type === a.type);
       if (old) a.color = old.color;
@@ -134,6 +156,9 @@ export function createPlannerStore() {
     update({ items: state.items.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
     changed();
   }
+  function resizeItem(id, sizeCells) {
+    return moveItem(id, { sizeCells }, true);
+  }
   function toggleState(id) {
     const a = state.items.find((x) => x.id === id);
     if (!a) return;
@@ -149,7 +174,7 @@ export function createPlannerStore() {
     patchItem(id, { state: next.state });
   }
   function remove(id) {
-    update({ items: state.items.filter((a) => a.id !== id), selected: null });
+    update({ items: state.items.filter((a) => a.id !== id).map((a) => (a.parentId === id ? { ...a, parentId: null } : a)), selected: null });
     changed();
   }
   function duplicate(id) {
@@ -177,8 +202,12 @@ export function createPlannerStore() {
         name: M[a.type].name,
         position_cells: [a.gx, a.gy, a.gz],
         position_grid_mm: [a.gx, a.gy, a.gz].map((v) => v * 48),
-        size_cells: M[a.type].cells,
-        dimensions_mm: M[a.type].cells.map((v) => v * 48),
+        family: M[a.type].family,
+        subkind: M[a.type].subkind,
+        parent_id: a.parentId || null,
+        interfaces: M[a.type].interfaces,
+        size_cells: cells(a),
+        dimensions_mm: cells(a).map((v) => v * 48),
         reserved_cells: cells(a),
         interface: M[a.type].anchor,
         standard_parts: M[a.type].parts,
@@ -206,6 +235,9 @@ export function createPlannerStore() {
     exportData,
     stopPlay,
     setFilter: (filter) => update({ filter }),
+    setFamilyFilter: (familyFilter) => update({ familyFilter, subkindFilter: '全部' }),
+    setSubkindFilter: (subkindFilter) => update({ subkindFilter }),
+    resizeItem,
     setTab: (rightTab) => update({ rightTab }),
     setView: (view) => update({ view, viewRevision: state.viewRevision + 1 }),
     setError: (error) => update({ error }),

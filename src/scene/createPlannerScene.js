@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ORIGIN, PITCH, envelope } from '../model/index.js';
+import { ORIGIN, PITCH, envelope, position, cells } from '../model/index.js';
 import { createMaterials } from './materials.js';
 import { createModuleBuilder } from './moduleGeometry.js';
 import { createEnvironment } from './environment.js';
@@ -18,6 +18,7 @@ export function createPlannerScene(stage, store, options = {}) {
     models: new Map(),
     exiting: [],
     materials: createMaterials(),
+    resizeHandles: new THREE.Group(),
   };
   let frame = 0,
     observer = null,
@@ -48,11 +49,28 @@ export function createPlannerScene(stage, store, options = {}) {
     if (!ctx.selectionBox) return;
     const a = ctx.items.find((x) => x.id === ctx.selected);
     ctx.selectionBox.visible = !!a;
+    while (ctx.resizeHandles.children.length) {
+      const h = ctx.resizeHandles.children.pop();
+      h.geometry?.dispose();
+      h.material?.dispose();
+    }
     if (a) {
       const e = envelope(a);
       ctx.selectionBox.box.min.set(...e.min.map((v, i) => v * PITCH + ORIGIN[i]));
       ctx.selectionBox.box.max.set(...e.max.map((v, i) => v * PITCH + ORIGIN[i]));
-    }
+      const box = new THREE.BoxGeometry(0.032, 0.032, 0.032);
+      for (const [axis, p, color] of [
+        ['x', [e.max[0], (e.min[1] + e.max[1]) / 2, e.min[2]], '#3158e8'],
+        ['y', [(e.min[0] + e.max[0]) / 2, e.max[1], e.min[2]], '#ed8e40'],
+        ['z', [(e.min[0] + e.max[0]) / 2, e.min[1], e.max[2]], '#5b8def'],
+      ]) {
+        const h = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ color }));
+        h.position.set(...p.map((v, i) => v * PITCH + ORIGIN[i]));
+        h.userData.resizeHandle = { id: a.id, axis };
+        ctx.resizeHandles.add(h);
+      }
+      ctx.resizeHandles.visible = true;
+    } else ctx.resizeHandles.visible = false;
   }
   function sync() {
     const s = store.getSnapshot();
@@ -76,7 +94,9 @@ export function createPlannerScene(stage, store, options = {}) {
           n.userData.transition = true;
         }
       } else {
-        if (g.userData.color !== a.color) rebuild(a);
+        const nextPosition = position(a);
+        g.position.set(...nextPosition);
+        if (g.userData.color !== a.color || g.userData.sizeKey !== cells(a).join('x')) rebuild(a);
         if (switching) ctx.models.get(a.id).userData.transition = true;
       }
     }
@@ -116,9 +136,11 @@ export function createPlannerScene(stage, store, options = {}) {
 
   try {
     environment.init();
+    environment.scene.add(ctx.resizeHandles);
     if (!options.preview) {
       builder.buildProps();
       for (const a of ctx.items) builder.buildModule(a);
+      updateSelection();
       observer = new ResizeObserver(environment.resize);
       observer.observe(stage);
       environment.resize();

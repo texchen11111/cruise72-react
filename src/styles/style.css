@@ -1007,6 +1007,58 @@ header {
 .filter .active {
   background: var(--ink);
 }
+.subfilter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -7px 0 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.subfilter select {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 6px 5px;
+  color: var(--ink);
+}
+.familyline {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 11px 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.familyline b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.interfacechips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 5px 0 12px;
+}
+.interfacechips span {
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 2px 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.dimensiontitle {
+  margin: 16px 0 6px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.unitread {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
 .cards {
   gap: 18px 10px;
 }

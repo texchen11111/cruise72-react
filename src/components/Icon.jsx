@@ -8,6 +8,11 @@ const paths = {
   sign: 'M3 4h18v13H3z M12 17v5M7 8h10m-10 4h7',
   worktop: 'M3 10h18v3H3z M5 13v8m14-8v8M5 18l5-5m9 5-5-5',
   acoustic: 'M4 3h16v18H4z M8 3v18m4-18v18m4-18v18',
+  pillar: 'M7 3h10v18H7z M10 3v18m4-18v18M4 6h3m10 0h3M4 12h3m10 0h3M4 18h3m10 0h3',
+  pegboard: 'M4 4h16v16H4z M8 8h1m6 0h1m-8 6h1m6 0h1m-8 3h1m6 0h1',
+  mesh: 'M4 4h16v16H4z M4 8h16M4 14h16M8 4v16M14 4v16',
+  metal: 'M4 4h16v16H4z M7 8h10M7 12h10M7 16h10',
+  rope: 'M4 4h16v16H4z M4 8c4 5 8-5 16 0M4 14c4 5 8-5 16 0',
 };
 export function Icon({ type }) {
   return (
