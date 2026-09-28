@@ -11,7 +11,8 @@ const orbitPath = fileURLToPath(new URL('./vendor/OrbitControls.js', import.meta
 // lives at the project root so Vite dev can serve it as a regular module.
 export default defineConfig(({ command }) => ({
   esbuild: { jsx: 'automatic' },
-  publicDir: command === 'build' ? 'public' : false,
+  // public/ holds gallery images (scenes); vendor/ lives at the project root.
+  publicDir: 'public',
   resolve:
     command === 'serve'
       ? {
