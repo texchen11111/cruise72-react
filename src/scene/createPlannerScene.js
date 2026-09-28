@@ -136,7 +136,7 @@ export function createPlannerScene(stage, store, options = {}) {
 
   try {
     environment.init();
-    environment.scene.add(ctx.resizeHandles);
+    ctx.scene.add(ctx.resizeHandles);
     if (!options.preview) {
       builder.buildProps();
       for (const a of ctx.items) builder.buildModule(a);

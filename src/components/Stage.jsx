@@ -12,7 +12,7 @@ export function Stage({ state, store, onDownload }) {
     } catch (e) {
       engine.current = createFallbackPlanner(container.current, store);
       store.setError(
-        '当前浏览器无法启动 WebGL，已切换为平面预览；模块库、设置、清单和尺寸调整仍可使用。',
+        '三维场景初始化失败，已切换为平面预览；模块库、设置、清单和尺寸调整仍可使用。',
       );
       console.error(e);
     }

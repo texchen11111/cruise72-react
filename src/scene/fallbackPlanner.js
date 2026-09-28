@@ -9,7 +9,7 @@ export function createFallbackPlanner(stage, store) {
   root.className = 'fallback-plan';
   const title = document.createElement('div');
   title.className = 'fallback-title';
-  title.textContent = '平面预览 · WebGL 暂不可用';
+  title.textContent = '平面预览 · 三维场景暂不可用';
   const wall = document.createElement('div');
   wall.className = 'fallback-wall';
   root.append(title, wall);
