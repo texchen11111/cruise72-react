@@ -10,6 +10,9 @@ import {
   conflict,
   findSpace,
   snapToPillar,
+  snapExtension,
+  mountPoints,
+  prepareLayout,
 } from '../src/model/index.js';
 let checks = 0;
 const ok = (v, m) => {
@@ -56,12 +59,14 @@ ok(!conflict(deep, [a]), 'same XY different Z');
 const pil = (id, gx) => ({ id, type: 'pillar', gx, gy: 0, gz: 0, state: 0 });
 const node = (gx) => ({ id: 'n', type: 'block', gx, gy: 5, gz: 0, state: 0 });
 const p3 = pil('p1', 3),
-  p23 = pil('p2', 23),
-  p43 = pil('p3', 43);
-ok(snapToPillar(node(4), [p3, p23, p43]).gx === 3, 'node snaps to nearest pillar column');
-ok(snapToPillar(node(9), [p3, p23, p43]).gx === 3, 'node snaps left pillar');
-ok(snapToPillar(node(30), [p3, p23, p43]).gx === 23, 'node snaps middle pillar');
-ok(snapToPillar(node(60), [p3, p23, p43]).gx === 43, 'node snaps right pillar');
+  p18 = pil('p2', 18),
+  p33 = pil('p3', 33),
+  p48 = pil('p4', 48);
+const allP = [p3, p18, p33, p48];
+ok(snapToPillar(node(4), allP).gx === 3, 'node snaps to nearest pillar column');
+ok(snapToPillar(node(9), allP).gx === 3, 'node snaps left pillar');
+ok(snapToPillar(node(30), allP).gx === 33, 'node snaps pillar 33');
+ok(snapToPillar(node(60), allP).gx === 48, 'node snaps last pillar');
 ok(snapToPillar(node(9), []).gx === 9, 'no pillars, no snap');
 const panel9 = { id: 'x', type: 'panel', gx: 9, gy: 5, gz: 0, state: 0 };
 ok(snapToPillar(panel9, [p3]).gx === 9, 'extensions never snap to pillars');
@@ -70,13 +75,60 @@ ok(
   'pillar coexists with mounted module',
 );
 ok(conflict(pil('q', 3), [p3]), 'pillars still exclude each other');
+// 派生挂接点：概念节点落在梯柱列上，由父子关系派生，不作为独立 item。
+const panelM = { id: 'm', type: 'panel', gx: 3, gy: 10, gz: 0, state: 0 };
+const pts = mountPoints(panelM, allP);
+ok(pts.length === 4, 'panel derives four mount points');
+ok(
+  pts.every((q) => [3, 18].includes(q.gx)) && new Set(pts.map((q) => q.gx)).size === 2,
+  'corner points sit on both spanned pillar columns',
+);
+ok(pts.every((q) => q.gy === 10 || q.gy === 21), 'corner rows at module edges');
+ok(pts.every((q) => q.pillar_id), 'points reference their pillar');
+const lp = mountPoints({ id: 'l', type: 'lamp', gx: 8, gy: 20, gz: 1, state: 0 }, allP);
+ok(lp.length === 2 && lp.every((q) => q.gx === 3), 'gz=1 module still mounts on a pillar column');
+ok(
+  mountPoints({ id: 'r', type: 'rail', gx: 3, gy: 5, gz: 0, state: 0 }, allP).every(
+    (q) => q.gx === 3 || q.gx === 18,
+  ),
+  'crossbar ends sit on both pillar columns',
+);
+ok(mountPoints(p3, allP).length === 0, 'pillars derive no mount points');
+ok(
+  mountPoints({ id: 'b', type: 'block', gx: 3, gy: 5, gz: 0, state: 0 }, allP).length === 0,
+  'real nodes derive no extra points',
+);
+// 拓展横向归位：挂接范围内有梯柱则保持原位；否则平移到最近梯柱的边缘，使模块始终挂接在梯柱上。
+ok(
+  snapExtension({ id: 'l', type: 'lamp', gx: 8, gy: 5, gz: 0, state: 0 }, allP).gx === 3,
+  'narrow extension attaches at nearest pillar edge',
+);
+ok(
+  snapExtension({ id: 'c', type: 'cabinet', gx: 4, gy: 5, gz: 0, state: 0 }, allP).gx === 4,
+  'wide module between face-contact pillars stays',
+);
 for (const p of [...PRESETS, ...EXHIBITIONS]) {
   const pillars = p.items.filter((a) => a.type === 'pillar');
-  ok(pillars.length === 3, p.id + ' has three pillars');
+  ok(pillars.length === 4, p.id + ' has four pillars');
   const nodes = p.items.filter((a) => M[a.type].family === '节点');
   ok(
     nodes.every((a) => pillars.some((q) => q.gx === a.gx)),
     p.id + ' nodes sit on pillar columns',
+  );
+  const laid = prepareLayout(p.items);
+  ok(
+    laid.every((a) => valid(a) && !conflict(a, laid)),
+    p.id + ' prepared layout stays valid',
+  );
+  const extensions = laid.filter((a) => M[a.type].family === '拓展');
+  ok(
+    extensions.every((a) => mountPoints(a, laid).length === M[a.type].mount),
+    p.id + ' extensions fully mounted on pillars',
+  );
+  ok(extensions.every((a) => !!a.parentId), p.id + ' extensions have a parent');
+  ok(
+    extensions.every((a) => laid.some((q) => q.id === a.parentId && M[q.type].family !== '拓展')),
+    p.id + ' extension parents are ladder or nodes',
   );
 }
 ok(

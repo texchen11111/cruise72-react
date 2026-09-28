@@ -83,7 +83,8 @@ for (const item of ctx.items) {
   assert.ok(meshes > 0, item.type);
 }
 assert.equal(ctx.models.size, 17);
-builder.buildProps();
+assert.equal(builder.buildProps, undefined, 'decorative rails are removed');
+assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra rails');
 ctx.items = ctx.items.map((item) => ({ ...item, state: 1 }));
 const animation = createAnimation(ctx);
 animation.update();

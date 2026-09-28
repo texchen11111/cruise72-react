@@ -1,17 +1,22 @@
 import assert from 'node:assert/strict';
 import { createPlannerStore } from '../src/store/index.js';
-import { PRESETS, clone } from '../src/model/index.js';
+import { PRESETS, clone, prepareLayout } from '../src/model/index.js';
 const s = createPlannerStore();
 let notifications = 0;
 const off = s.subscribe(() => notifications++);
 try {
-  assert.deepEqual(s.getSnapshot().items, PRESETS[0].items);
+  assert.deepEqual(s.getSnapshot().items, prepareLayout(PRESETS[0].items));
   const first = s.getSnapshot();
   s.setFilter('氛围');
   assert.notEqual(first, s.getSnapshot());
   assert.equal(first.filter, '全部');
   const block = s.addItem('block', 0, 0, 0);
   assert.equal(s.getSnapshot().selected, block.id);
+  assert.equal(
+    s.getSnapshot().items.find((a) => a.id === block.id).parentId,
+    'p1',
+    '节点挂到最近的梯柱',
+  );
   assert.equal(s.moveItem(block.id, { gx: 1, gy: 1, gz: 1 }), true);
   assert.equal(
     s.getSnapshot().items.find((a) => a.id === block.id).gx,
@@ -24,15 +29,21 @@ try {
   s.addItem('block', 2, 2, 1, null, true);
   assert.equal(s.moveItem(block.id, { gx: 2, gy: 2, gz: 1 }), false);
   s.duplicate(block.id);
-  assert.equal(s.getSnapshot().items.length, 12);
+  assert.equal(s.getSnapshot().items.length, 13);
   s.remove(block.id);
-  assert.equal(s.getSnapshot().items.length, 11);
+  assert.equal(s.getSnapshot().items.length, 12);
   for (let i = 0; i < 4; i++) {
     s.setPreset(i);
-    assert.deepEqual(s.getSnapshot().items, PRESETS[i].items);
+    assert.deepEqual(s.getSnapshot().items, prepareLayout(PRESETS[i].items));
     assert.equal(s.getSnapshot().night, i === 3);
     assert.equal(s.getSnapshot().dirty, false);
   }
+  s.setPreset(0);
+  assert.equal(
+    s.getSnapshot().items.find((a) => a.id === 'a').parentId,
+    'p1',
+    '拓展回挂到最近的梯柱',
+  );
   s.setExhibition(1);
   s.toggleState('v1');
   assert.equal(s.getSnapshot().items.find((a) => a.id === 'v1').state, 1);
@@ -43,15 +54,30 @@ try {
   assert.equal(d.grid.unit_mm, 48);
   assert.equal(d.modules.find((a) => a.id === 'd').intensity, 85);
   assert.deepEqual(d.modules[0].position_cells, [3, 27, 0]);
+  const byId = new Map(d.modules.map((m) => [m.id, m]));
+  const extensionMountTotal = s
+    .getSnapshot()
+    .items.filter((a) => byId.get(a.id)?.family === '拓展')
+    .reduce((n, a) => n + byId.get(a.id).assembly.nodes, 0);
+  assert.ok(Array.isArray(d.connection_nodes), 'export carries derived connection nodes');
+  assert.equal(d.connection_nodes.length, extensionMountTotal, 'one derived node per mount point');
+  assert.ok(
+    d.connection_nodes.every((n) => n.pillar_id && d.modules.some((m) => m.id === n.pillar_id)),
+    'derived nodes reference real pillars',
+  );
+  assert.ok(
+    d.modules.every((m) => !String(m.id).includes(':mp:')),
+    'connection points never leak into modules',
+  );
   s.togglePlay();
   assert.equal(s.getSnapshot().playing, true);
-  s.moveItem('a', { gx: 4 });
+  s.moveItem('a', { gy: 4 });
   assert.equal(s.getSnapshot().playing, false);
   s.toggleGrid();
   assert.equal(s.getSnapshot().showDims, false);
   assert.ok(notifications > 20);
   s.setExhibition(1);
-  assert.equal(s.getSnapshot().transition.retained, 6);
+  assert.equal(s.getSnapshot().transition.retained, 7);
   assert.equal(s.getSnapshot().transition.nodes, 6);
   assert.equal(s.exportData().exhibition, '层架陈列');
   s.setExhibition(2);
@@ -79,6 +105,18 @@ try {
   }
   assert.equal(h.resizeItem(extension.id, [16, 12, 1]), true);
   assert.deepEqual(h.exportData().modules.find((a) => a.id === extension.id).size_cells, [16, 12, 1]);
+  const panel2 = h.addItem('panel', 40, 4, 0, null, true);
+  assert.equal(
+    h.getSnapshot().items.find((a) => a.id === panel2.id).parentId,
+    node.id,
+    '拓展优先挂到节点',
+  );
+  const before2 = h.getSnapshot().items.map((a) => ({ id: a.id, gx: a.gx }));
+  assert.equal(h.moveItem(pillar.id, { gx: 4 }), true);
+  for (const a of h.getSnapshot().items.filter((x) => [node.id, extension.id, panel2.id].includes(x.id))) {
+    const old = before2.find((x) => x.id === a.id);
+    assert.equal(a.gx, old.gx + 2, '移动梯柱时节点与拓展整体跟随');
+  }
   h.destroy();
   console.log(
     'React store: immutable snapshots, add/duplicate/remove, movement/collision, presets, states, export and autoplay passed.',

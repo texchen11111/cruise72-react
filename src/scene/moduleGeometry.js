@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MODULES as M, position, cells } from '../model/index.js';
+import { MODULES as M, PITCH, mountPoints, position, cells } from '../model/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
 import { buildSurface } from './models/surfaces.js';
@@ -7,10 +7,10 @@ import { buildSurface } from './models/surfaces.js';
 export function createModuleBuilder(ctx) {
   const { mat, textTexture, shared } = ctx.materials;
   const { silver, orange, dark, white, glass } = shared;
-  function node(g, x, y, co) {
+  function node(g, x, y, co, z = 0.024) {
     const b = mat(co);
-    cube(g, 0.048, 0.048, 0.048, x, y, 0.024, b);
-    cube(g, 0.016, 0.004, 0.001, x, y, 0.0475, silver);
+    cube(g, 0.048, 0.048, 0.048, x, y, z, b);
+    cube(g, 0.016, 0.004, 0.001, x, y, z + 0.0235, silver);
   }
 
   function buildModule(a) {
@@ -157,11 +157,28 @@ export function createModuleBuilder(ctx) {
         cube(g, 0.025, h, 0.018, x, 0, 0.009, silver);
       g.add(act);
     }
-    if (a.type !== 'block') {
-      const xs = m.mount === 4 || a.type === 'rail' ? [-w / 2 + 0.024, w / 2 - 0.024] : [0];
-      const ys = a.type === 'rail' ? [0] : [-h / 2 + 0.024, h / 2 - 0.024];
-      for (const x of xs) for (const y of ys) node(g, x, y, a.color);
-      if (m.mount === 4) for (const y of ys) cube(g, w - 0.048, 0.012, 0.012, 0, y, 0.018, silver);
+    if (a.type !== 'block' && m.mount) {
+      // 概念节点由父子关系派生，必须落在梯柱列上；没有梯柱时（如目录缩略图）回退到四角示意。
+      const pts = mountPoints(a, ctx.items || []);
+      if (pts.length) {
+        const [w, h] = cells(a);
+        const cx = a.gx + w / 2,
+          cy = a.gy + h / 2,
+          z = Math.max(0.002, 0.05 - a.gz * PITCH);
+        for (const p of pts) node(g, (p.gx + 0.5 - cx) * PITCH, (p.gy + 0.5 - cy) * PITCH, a.color, z);
+        const cols = [...new Set(pts.map((p) => p.gx))];
+        if (m.mount === 4 && cols.length >= 2) {
+          const x1 = (cols[0] + 0.5 - cx) * PITCH,
+            x2 = (cols[cols.length - 1] + 0.5 - cx) * PITCH;
+          for (const gy of new Set(pts.map((p) => p.gy)))
+            cube(g, x2 - x1, 0.012, 0.012, (x1 + x2) / 2, (gy + 0.5 - cy) * PITCH, z - 0.006, silver);
+        }
+      } else {
+        const xs = m.mount === 4 || a.type === 'rail' ? [-w / 2 + 0.024, w / 2 - 0.024] : [0];
+        const ys = a.type === 'rail' ? [0] : [-h / 2 + 0.024, h / 2 - 0.024];
+        for (const x of xs) for (const y of ys) node(g, x, y, a.color);
+        if (m.mount === 4) for (const y of ys) cube(g, w - 0.048, 0.012, 0.012, 0, y, 0.018, silver);
+      }
     }
     g.userData.act = act;
     if (act) {
@@ -193,9 +210,5 @@ export function createModuleBuilder(ctx) {
       }
     });
   }
-  function buildProps() {
-    for (const x of [-1.2, -0.48, 0.24, 0.96])
-      cube(ctx.scene, 0.018, 2.88, 0.018, x, 1.45, -0.002, silver);
-  }
-  return { buildModule, dispose, buildProps };
+  return { buildModule, dispose };
 }

@@ -365,8 +365,9 @@ const item = (id, type, gx, gy, state = 0, gz = 0) => ({
   intensity: 65,
   temperature: 3200,
 });
-// 梯柱列：所有预设共享的三根基底轨条（id 保持一致，切换场景时视为固定设施）。
-export const PILLAR_COLUMNS = [3, 23, 43];
+// 梯柱列：所有预设共享的四根基底轨条（id 保持一致，切换场景时视为固定设施）。
+// 布局与参考视频一致：两组挂接区域、柱距 15 格（720 mm，视频标注“柱距 714 mm”）。
+export const PILLAR_COLUMNS = [3, 18, 33, 48];
 const pillarItems = () => PILLAR_COLUMNS.map((gx, i) => item('p' + (i + 1), 'pillar', gx, 0));
 export const EXHIBITIONS = [
   {
@@ -376,8 +377,8 @@ export const EXHIBITIONS = [
     desc: '以48 mm节点框选航线摄影与海报，灯具和展签共同组织阅读顺序。',
     items: [
       item('a', 'panel', 3, 27),
-      item('b', 'panel', 23, 24),
-      item('c', 'panel', 42, 27),
+      item('b', 'panel', 18, 24),
+      item('c', 'panel', 33, 27),
       item('d', 'lamp', 8, 45, 1),
       item('e', 'lamp', 28, 45, 1),
       item('f', 'sign', 27, 14),
@@ -392,8 +393,8 @@ export const EXHIBITIONS = [
     items: [
       item('s1', 'shelf', 3, 25),
       item('s2', 'shelf', 3, 34),
-      item('v1', 'cabinet', 23, 24),
-      item('t1', 'tray', 43, 25),
+      item('v1', 'cabinet', 18, 24),
+      item('t1', 'tray', 34, 25),
       item('d', 'lamp', 8, 45, 1),
       item('e', 'lamp', 28, 45, 1),
       item('f', 'sign', 27, 14),
@@ -407,8 +408,8 @@ export const EXHIBITIONS = [
     desc: '节点支撑倾斜书托，底部挡边承托图录；层板容纳备用书刊，横杆延续统一连接基准。',
     items: [
       item('r1', 'bookrest', 3, 24),
-      item('r2', 'bookrest', 23, 24),
-      item('s1', 'shelf', 43, 25),
+      item('r2', 'bookrest', 18, 24),
+      item('s1', 'shelf', 34, 25),
       item('h1', 'rail', 3, 36),
       item('d', 'lamp', 8, 43, 1),
       item('e', 'lamp', 28, 43, 1),
@@ -423,8 +424,8 @@ export const EXHIBITIONS = [
     desc: '以一段航线为主题，将摄影、地方工艺与旅行图录组合成有主次的展陈。节点和附件可随主题再次使用。',
     items: [
       item('a', 'panel', 3, 27),
-      item('v1', 'cabinet', 23, 24),
-      item('r2', 'bookrest', 43, 25),
+      item('v1', 'cabinet', 18, 24),
+      item('r2', 'bookrest', 34, 25),
       item('t1', 'tray', 3, 16),
       item('d', 'lamp', 8, 45, 1),
       item('e', 'lamp', 28, 45, 1),
@@ -450,11 +451,11 @@ export const PRESETS = [
     ambient: 'day',
     items: [
       item('a', 'worktop', 3, 16, 1),
-      item('b', 'worktop', 43, 16, 1),
-      item('c', 'shelf', 23, 24),
+      item('b', 'worktop', 34, 16, 1),
+      item('c', 'shelf', 18, 24),
       item('d', 'sign', 7, 36),
       item('e', 'lamp', 47, 49, 1),
-      item('f', 'acoustic', 23, 34),
+      item('f', 'acoustic', 18, 34),
       ...pillarItems(),
     ],
   },
@@ -467,10 +468,10 @@ export const PRESETS = [
     items: [
       item('a', 'cabinet', 3, 30),
       item('b', 'shelf', 3, 20),
-      item('c', 'cabinet', 43, 30),
-      item('d', 'shelf', 43, 20),
+      item('c', 'cabinet', 34, 30),
+      item('d', 'shelf', 34, 20),
       item('e', 'sign', 27, 46),
-      item('f', 'worktop', 23, 14, 1),
+      item('f', 'worktop', 18, 14, 1),
       ...pillarItems(),
     ],
   },
@@ -482,11 +483,11 @@ export const PRESETS = [
     ambient: 'night',
     items: [
       item('a', 'acoustic', 3, 24),
-      item('b', 'acoustic', 43, 24),
+      item('b', 'acoustic', 34, 24),
       item('c', 'lamp', 8, 43, 1),
       item('d', 'lamp', 48, 43, 1),
       item('e', 'scent', 28, 9),
-      item('f', 'shelf', 23, 19),
+      item('f', 'shelf', 18, 19),
       item('g', 'sign', 27, 48),
       ...pillarItems(),
     ],
@@ -510,6 +511,19 @@ export function normalizeParents(items) {
     if (current) continue;
     const candidates = next.filter((b) => MODULES[b.type]?.family === wanted);
     if (!candidates.length) {
+      // 没有真实节点可挂时，拓展先回挂到最近的梯柱；有节点时仍优先挂节点。
+      if (wanted === '节点') {
+        const pillars = next.filter((b) => MODULES[b.type]?.family === '梯柱');
+        if (pillars.length) {
+          pillars.sort(
+            (x, y) =>
+              Math.abs(x.gx - a.gx) - Math.abs(y.gx - a.gx) ||
+              Math.abs(x.gy - a.gy) - Math.abs(y.gy - a.gy),
+          );
+          a.parentId = pillars[0].id;
+          continue;
+        }
+      }
       delete a.parentId;
       continue;
     }
@@ -581,6 +595,72 @@ export function snapToPillar(a, items) {
   );
   return gx === a.gx ? a : { ...a, gx };
 }
+// 梯柱的 z 向承托范围是否够到模块背平面（梯柱深 1 格：gz 0/1 的模块都挂在同一根梯柱上）。
+const pillarReaches = (p, a) => p.gz <= a.gz && p.gz + cells(p)[2] >= a.gz;
+const pillarsFor = (a, items) =>
+  items
+    .filter((b) => b.id !== a.id && MODULES[b.type]?.family === '梯柱' && pillarReaches(b, a))
+    .sort((x, y) => x.gx - y.gx);
+// 派生挂接点：拓展模块的概念节点必须落在梯柱列上。
+// 只作为几何与导出的派生数据，不进入 state.items，避免配置清单膨胀。
+export function mountPoints(a, items) {
+  const m = MODULES[a.type];
+  if (!m || m.family !== '拓展' || !m.mount) return [];
+  const pillars = pillarsFor(a, items);
+  if (!pillars.length) return [];
+  const [w, h] = cells(a);
+  // 梯柱列与模块跨度（含左右端面贴合）相交即视为挂接在该梯柱上。
+  const inside = pillars.filter((p) => p.gx >= a.gx - 1 && p.gx <= a.gx + w);
+  let cols;
+  if (inside.length) cols = [inside[0].gx];
+  else {
+    const mid = a.gx + w / 2;
+    cols = [
+      pillars.reduce((best, p) =>
+        Math.abs(p.gx + 0.5 - mid) < Math.abs(best.gx + 0.5 - mid) ? p : best,
+      ).gx,
+    ];
+  }
+  if (inside.length >= 2 && (m.mount >= 4 || h <= 1))
+    cols = [inside[0].gx, inside[inside.length - 1].gx];
+  const lo = a.gy,
+    hi = a.gy + h - 1;
+  const rowsFor = (count) =>
+    count === 1 ? [lo] : Array.from({ length: count }, (_, i) => Math.round(lo + ((hi - lo) * i) / (count - 1)));
+  const pts =
+    cols.length >= 2
+      ? cols.flatMap((gx) => rowsFor(Math.ceil(m.mount / 2)).map((gy) => ({ gx, gy })))
+      : rowsFor(m.mount).map((gy) => ({ gx: cols[0], gy }));
+  const gz = pillars[0].gz;
+  return pts.slice(0, m.mount).map((p, i) => ({
+    id: `${a.id}:mp:${i}`,
+    owner_id: a.id,
+    pillar_id: pillars.find((q) => q.gx === p.gx)?.id ?? null,
+    gx: p.gx,
+    gy: p.gy,
+    gz,
+  }));
+}
+// 拓展模块的横向归位：所在跨度内含梯柱则保持原位；否则平移到最近梯柱的边缘，
+// 使模块始终挂接在梯柱上（节点由 mountPoints 派生，随模块随动）。
+export function snapExtension(a, items) {
+  if (MODULES[a.type]?.family !== '拓展') return a;
+  const [w] = cells(a);
+  const pillars = pillarsFor(a, items);
+  if (!pillars.length) return a;
+  const inside = pillars.filter((p) => p.gx >= a.gx - 1 && p.gx <= a.gx + w);
+  if (inside.length) return a;
+  const mid = a.gx + w / 2;
+  const nearest = pillars.reduce((best, p) =>
+    Math.abs(p.gx + 0.5 - mid) < Math.abs(best.gx + 0.5 - mid) ? p : best,
+  );
+  const gx = nearest.gx + 0.5 <= mid ? nearest.gx : nearest.gx - w + 1;
+  return gx === a.gx ? a : { ...a, gx };
+}
+// 预设/初始布局的统一入口：归一父子关系后，把拓展模块归位到梯柱挂接范围。
+export const attachExtensions = (items) =>
+  items.map((a) => (MODULES[a.type]?.family === '拓展' ? snapExtension(a, items) : a));
+export const prepareLayout = (items) => attachExtensions(normalizeParents(clone(items)));
 export function position(a) {
   const c = cells(a);
   return [

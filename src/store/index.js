@@ -4,7 +4,6 @@ import {
   EXHIBITIONS,
   assembly,
   compareLayouts,
-  clone,
   GRID,
   cells,
   valid,
@@ -12,16 +11,19 @@ import {
   conflict,
   findSpace,
   normalizeParents,
+  prepareLayout,
   childrenOf,
   parentFamily,
   snapToPillar,
+  snapExtension,
+  mountPoints,
 } from '../model/index.js';
 
 // React reads immutable snapshots through useSyncExternalStore. Three.js consumes
 // the same state; it never owns or rewrites the React interface.
 export function createPlannerStore() {
   let state = {
-    items: normalizeParents(clone(PRESETS[0].items)),
+    items: prepareLayout(PRESETS[0].items),
     selected: 'b',
     preset: 0,
     exhibition: 0,
@@ -80,8 +82,11 @@ export function createPlannerStore() {
     }
     let next = { ...a, ...patch, sizeCells: hasSize ? patch.sizeCells.map((v) => Math.round(Number(v))) : a.sizeCells };
     for (const k of ['gx', 'gy', 'gz']) next[k] = Math.round(next[k]);
-    // 节点基于梯柱移动：横向格位吸附到最近的梯柱列，再带动整棵子树。
-    next = snapToPillar(next, state.items);
+    // 节点基于梯柱移动：横向格位吸附到最近的梯柱列；拓展移动时归位到梯柱挂接范围。
+    // 尺寸调整只重算派生挂接点，不改变模块位置，避免缩放时模块跳位。
+    next = hasSize
+      ? snapToPillar(next, state.items)
+      : snapExtension(snapToPillar(next, state.items), state.items);
     const moving = childrenOf(id, state.items);
     const delta = ['gx', 'gy', 'gz'].map((k) => next[k] - a[k]);
     const subtree = state.items.filter((x) => moving.has(x.id));
@@ -128,7 +133,10 @@ export function createPlannerStore() {
     const selected = state.items.find((x) => x.id === state.selected);
     const wanted = parentFamily(type);
     const parent = wanted && selected && M[selected.type]?.family === wanted ? selected : null;
-    const a = { ...placed, id: 'u' + uid++ };
+    let a = { ...placed, id: 'u' + uid++ };
+    // 拓展放置时归位到最近梯柱的边缘；归位后重叠则退回原自由位。
+    const attached = snapExtension(a, state.items);
+    if (attached.gx !== a.gx && valid(attached) && !conflict(attached, state.items)) a = attached;
     if (parent) a.parentId = parent.id;
     update({ items: normalizeParents([...state.items, a]), selected: a.id, rightTab: 'detail' });
     changed();
@@ -137,7 +145,7 @@ export function createPlannerStore() {
   }
   function applyLayout(i, exhibition) {
     const layout = i === 0 ? EXHIBITIONS[exhibition] : PRESETS[i];
-    const next = normalizeParents(clone(layout.items));
+    const next = prepareLayout(layout.items);
     for (const a of next) {
       const old = state.items.find((b) => b.id === a.id && b.type === a.type);
       if (old) a.color = old.color;
@@ -221,6 +229,14 @@ export function createPlannerStore() {
         standard_parts: M[a.type].parts,
         assembly: assembly(a.type),
       })),
+      // 派生挂接点：由父子关系按梯柱列派生，仅供几何/建模引用，不计入模块数量。
+      connection_nodes: state.items.flatMap((a) =>
+        mountPoints(a, state.items).map((p) => ({
+          ...p,
+          owner_name: M[a.type].name,
+          position_grid_mm: [p.gx, p.gy, p.gz].map((v) => v * 48),
+        })),
+      ),
     };
   }
   return {
