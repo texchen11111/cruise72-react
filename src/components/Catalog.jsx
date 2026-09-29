@@ -11,6 +11,7 @@ export function Catalog({ state, store }) {
   );
   return (
     <aside className="catalog">
+      <h2>模块自定义</h2>
       <div className="filter" role="group" aria-label="模块大类">
         {families.map((x) => (
           <button
