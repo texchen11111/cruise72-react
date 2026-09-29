@@ -1,9 +1,8 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { MODULES as M, clone } from './model/index.js';
 import { Catalog } from './components/Catalog.jsx';
 import { Inspector } from './components/Inspector.jsx';
 import { Stage } from './components/Stage.jsx';
-import { AboutDialog } from './components/AboutDialog.jsx';
 export function download(url, name) {
   const a = document.createElement('a');
   a.href = url;
@@ -11,8 +10,7 @@ export function download(url, name) {
   a.click();
 }
 export default function App({ store }) {
-  const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot),
-    dialog = useRef(null);
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const exportConfig = () => {
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(store.exportData(), null, 2)], { type: 'application/json' }),
@@ -23,8 +21,7 @@ export default function App({ store }) {
   };
   useEffect(() => {
     const onKey = (e) => {
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || dialog.current?.open)
-        return;
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
       const rect = document.getElementById('planner')?.getBoundingClientRect();
       if (rect?.height && (rect.top >= window.innerHeight || rect.bottom <= 0)) return;
       const s = store.getSnapshot(),
@@ -78,31 +75,18 @@ export default function App({ store }) {
           邮轮72变<small>48 MM NODE SYSTEM</small>
         </div>
         <div className="headlinks">
-          <span className="pill">V4.9 · Rhino 真实网格版</span>
-          <a href="https://cruise72-react.2161598874.workers.dev/" target="_blank" rel="noopener">
-            项目网站 ↗
-          </a>
-          <button id="about" onClick={() => dialog.current.showModal()}>
-            设计逻辑
-          </button>
-          <a className="primary configure-link" href="#planner-section">
-            自定义配置 ↗
-          </a>
-        </div>
-      </header>
-      <section id="planner-section" className="planner-section" aria-labelledby="planner-heading">
-        <div className="planner-heading">
           <button className="primary export" id="export" onClick={exportConfig}>
             导出方案 ↓
           </button>
         </div>
+      </header>
+      <section id="planner-section" className="planner-section">
         <main id="planner" className="workspace">
           <Catalog state={state} store={store} />
           <Stage state={state} store={store} onDownload={download} />
           <Inspector state={state} store={store} onExport={exportConfig} />
         </main>
       </section>
-      <AboutDialog dialogRef={dialog} />
     </>
   );
 }
