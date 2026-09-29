@@ -88,7 +88,7 @@ try {
         n.clamp.guideDiameterMm === 6 &&
         n.clamp.jawBackMm === 40.4 &&
         n.exhibitMm === 10 &&
-        n.sliderOffsetMm === 4,
+        n.sliderOffsetMm === 10,
     ),
     'connection nodes carry mechanical clamp data and live thickness',
   );

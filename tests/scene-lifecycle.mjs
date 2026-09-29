@@ -169,12 +169,15 @@ const mechanismsOf = (ownerId) => {
   );
   const sliders = slidersOf('a');
   assert.equal(sliders.length, 4, 'panel renders four slider groups');
-  assert.ok(sliders.every((s) => s.position.z === 0), 'sliders start at reference thickness');
+  assert.ok(
+    sliders.every((s) => Math.abs(s.position.z - 0.006) < 1e-9),
+    'sliders start at the 6 mm reference thickness',
+  );
   assert.equal(store.patchItem('a', { exhibitMm: 12 }), true);
   assertMountGeometry();
   assert.ok(
-    slidersOf('a').every((s) => Math.abs(s.position.z - 0.006) < 1e-9),
-    '12 mm thickness pushes all four sliders outward by exactly 6 mm',
+    slidersOf('a').every((s) => Math.abs(s.position.z - 0.012) < 1e-9),
+    '12 mm thickness drives all four sliders outward by exactly 12 mm',
   );
   assert.equal(store.patchItem('a', { exhibitMm: 99 }), false);
   assert.equal(
@@ -186,9 +189,20 @@ const mechanismsOf = (ownerId) => {
   assert.equal(store.patchItem('a', { exhibitMm: 6 }), true);
   assertMountGeometry();
   assert.ok(
-    slidersOf('a').every((s) => s.position.z === 0),
-    'sliders return to reference after restoring thickness',
+    slidersOf('a').every((s) => Math.abs(s.position.z - 0.006) < 1e-9),
+    'sliders return to the 6 mm reference after restoring thickness',
   );
+  // 非夹持模块（如灯具）的派生节点滑块收回为完整立方体。
+  const lampSliders = slidersOf(
+    store.getSnapshot().items.find((a) => a.type === 'lamp')?.id ?? '',
+  );
+  if (lampSliders.length)
+    assert.ok(
+      lampSliders.every(
+        (s) => Math.abs(s.position.z + 0.007) < 1e-9 && s.userData.slider.retract === true,
+      ),
+      'non-exhibit derived nodes keep the slider fully retracted',
+    );
 }
 store.setExhibition(2);
 // 完成切换动画后再核验，旧模型应退出场景。

@@ -11,9 +11,6 @@ export function Catalog({ state, store }) {
   );
   return (
     <aside className="catalog">
-      <div className="eyebrow">72+ / COLLECTION</div>
-      <h2>模块系列</h2>
-      <div className="sub">48 mm 基础节点 · 整数组合</div>
       <div className="filter" role="group" aria-label="模块大类">
         {families.map((x) => (
           <button
@@ -61,12 +58,6 @@ export function Catalog({ state, store }) {
               <small>{m.cells.map((n) => n * 48).join(' × ')} mm</small>
             </button>
           ))}
-      </div>
-      <div className="catalognote">
-        <b>梯柱 × 节点 × 拓展</b>先固定 Rhino 梯柱，再把节点挂到梯柱，最后把不同界面和功能附件挂到节点。组合整体按整数格占位，三轴移动以48 mm为一步。
-        <br />
-        <br />
-        拖动调整左右 / 上下位置；右侧调节离墙层数。网格不等同于已经实现的安装点。
       </div>
     </aside>
   );

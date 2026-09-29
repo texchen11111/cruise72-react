@@ -11,7 +11,7 @@ import {
 } from '../model/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
-import { buildSurface, rectsMinusHoles } from './models/surfaces.js';
+import { buildSurface } from './models/surfaces.js';
 
 const REF = CLAMP.referenceExhibitMm;
 // 模块坐标系中薄板背面的 z：锚点（gz*48+24 mm）+ 夹口背侧 40.4 mm。
@@ -19,11 +19,12 @@ const exhibitBackZ = (a, gz) => (gz - a.gz) * PITCH + (CLAMP.anchorFromGridZMm +
 
 export function createModuleBuilder(ctx) {
   const { mat, textTexture, shared } = ctx.materials;
-  const { silver, orange, dark, white, glass } = shared;
-  const nodeMats = { silver, orange, dark, white };
+  const { silver, orange, blue, dark, white, glass } = shared;
+  const nodeMats = { silver, orange, blue, dark, white };
   // 派生/真实节点：Rhino 装配（背板 + 机芯 + 滑块），锚点携带挂点数据。
-  function node(g, x, y, z, { role, thicknessMm, ownerId }, point = null) {
-    buildRhinoNode(g, x, y, z, { role, thicknessMm, ownerId, point, mats: nodeMats });
+  // 夹持状态压板压在展板正面；未夹持（retract）收回为完整立方体。
+  function node(g, x, y, z, { role, thicknessMm, retract, ownerId }, point = null) {
+    buildRhinoNode(g, x, y, z, { role, thicknessMm, retract, ownerId, point, mats: nodeMats });
   }
 
   function buildModule(a) {
@@ -35,13 +36,8 @@ export function createModuleBuilder(ctx) {
     g.userData.id = a.id;
     g.position.set(...position(a));
     let act = null;
-    // 薄界面（panel 与四种拓展界面）先取派生挂点：板材缺口与背面位置都由机械层决定。
+    // 薄界面（panel 与四种拓展界面）的派生挂点：板材背面位置由机械层决定。
     const pts = a.type !== 'block' && m.mount ? mountPoints(a, ctx.items || []) : [];
-    const holes = pts.map((p) => {
-      const cx = (p.gx + 0.5 - (a.gx + w / PITCH / 2)) * PITCH,
-        cy = (p.gy + 0.5 - (a.gy + h / PITCH / 2)) * PITCH;
-      return { x0: cx - PITCH / 2, y0: cy - PITCH / 2, x1: cx + PITCH / 2, y1: cy + PITCH / 2 };
-    });
     const thicknessMm = a.exhibitMm ?? REF;
     const backZ = pts.length ? exhibitBackZ(a, pts[0].gz) : exhibitBackZ(a, a.gz);
     if (a.type === 'pillar') buildRhinoPillar(g, h, nodeMats);
@@ -49,30 +45,17 @@ export function createModuleBuilder(ctx) {
       node(g, 0, 0, CLAMP.anchorFromGridZMm * 0.001, {
         role: 'standalone',
         thicknessMm,
+        retract: true,
         ownerId: a.id,
       });
     else if (['pegboard', 'mesh', 'metal', 'rope'].includes(a.type)) {
-      // 网状/绳挂界面保留完整张紧面（夹板压网即机构本身）；板类开 48² 挂点缺口。
-      const sheetHoles = ['mesh', 'rope'].includes(a.type) ? [] : holes;
-      buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange }, { backZ, holes: sheetHoles });
+      buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange }, { backZ });
     } else if (a.type === 'panel') {
+      // 展板整板夹持：前压板压在正面（见图1），圆导柱穿角部孔、端面与板面齐平藏于压板后。
       const depth = thicknessMm * 0.001;
-      for (const r of rectsMinusHoles(w, h, holes)) {
-        const rw = r.x1 - r.x0,
-          rh = r.y1 - r.y0;
-        cube(g, rw, rh, depth, (r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2, backZ + depth / 2, white);
-      }
+      cube(g, w, h, depth, 0, 0, backZ + depth / 2, white);
       const front = new THREE.Mesh(
-        holes.length
-          ? (() => {
-              // 画面收缩到四角缺口之间的中央区，文字不跨越节点装配区。
-              const left = Math.max(...holes.filter((r) => (r.x0 + r.x1) / 2 < 0).map((r) => r.x1)),
-                right = Math.min(...holes.filter((r) => (r.x0 + r.x1) / 2 > 0).map((r) => r.x0)),
-                bottom = Math.max(...holes.filter((r) => (r.y0 + r.y1) / 2 < 0).map((r) => r.y1)),
-                top = Math.min(...holes.filter((r) => (r.y0 + r.y1) / 2 > 0).map((r) => r.y0));
-              return new THREE.PlaneGeometry(right - left - 0.012, top - bottom - 0.012);
-            })()
-          : new THREE.PlaneGeometry(w - 0.012, h - 0.012),
+        new THREE.PlaneGeometry(w - 0.012, h - 0.012),
         textTexture('ON THE OCEAN', '72+ / 48 mm system'),
       );
       front.position.set(0, 0, backZ + depth + 0.001);
@@ -232,8 +215,10 @@ export function createModuleBuilder(ctx) {
               (p.gz - a.gz) * PITCH + CLAMP.anchorFromGridZMm * 0.001,
               {
                 role: p.role,
-                // 只有薄界面展品随厚度驱动滑块；其余模块滑块停在参考位。
-                thicknessMm: isExhibitType(a.type) ? thicknessMm : REF,
+                // 只有薄界面展品随厚度驱动滑块压板；其余模块滑块收回为完整立方体。
+                ...(isExhibitType(a.type)
+                  ? { thicknessMm }
+                  : { thicknessMm: REF, retract: true }),
                 ownerId: a.id,
               },
               p,
@@ -247,6 +232,7 @@ export function createModuleBuilder(ctx) {
             node(g, x, y, CLAMP.anchorFromGridZMm * 0.001, {
               role: 'standalone',
               thicknessMm: REF,
+              retract: true,
               ownerId: a.id,
             });
       }

@@ -7,6 +7,7 @@ export {
   isExhibitType,
   validThickness,
   sliderOffsetMm,
+  sliderRetractMm,
   exhibitBackMm,
   exhibitFrontMm,
   exhibitCenterMm,

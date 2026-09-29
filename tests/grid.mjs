@@ -17,6 +17,7 @@ import {
   CLAMP,
   validThickness,
   sliderOffsetMm,
+  sliderRetractMm,
   exhibitBackMm,
   exhibitFrontMm,
   exhibitCenterMm,
@@ -197,22 +198,30 @@ ok(
   'exhibit centre stays within 3 mm of the reference across the range',
 );
 ok(
-  exhibitFrontMm(1) - 40.4 === sliderOffsetMm(1) + CLAMP.referenceExhibitMm &&
-    exhibitFrontMm(12) - 40.4 === sliderOffsetMm(12) + CLAMP.referenceExhibitMm,
-  'press plate stays in contact with the exhibit front at any valid thickness',
+  exhibitFrontMm(1) - 40.4 === sliderOffsetMm(1) &&
+    exhibitFrontMm(12) - 40.4 === sliderOffsetMm(12),
+  'press plate back (40.4 + offset) touches the exhibit front at any valid thickness',
 );
-// 滑块行程：厚度变化驱动前压板，全程不超过 ±maxOutwardTravel。
-ok(sliderOffsetMm(6) === 0, 'slider at reference thickness');
+// 滑块行程：offset = 厚度 t（压板整体外移压正面）；±7 是压板在导柱上的弹簧
+// 补偿行程（相对轴肩），不是滑块移动范围，因此 offset 可超出 7。
+ok(sliderOffsetMm(6) === 6 && sliderOffsetMm(CLAMP.referenceExhibitMm) === 6, 'slider offset equals thickness');
 for (let t = CLAMP.exhibitRangeMm[0]; t <= CLAMP.exhibitRangeMm[1]; t++) {
   ok(
-    Math.abs(sliderOffsetMm(t)) <= CLAMP.maxOutwardTravelMm,
-    'slider travel within ±' + CLAMP.maxOutwardTravelMm + ' mm at t=' + t,
+    CLAMP.jawBackMm + sliderOffsetMm(t) === exhibitFrontMm(t),
+    'clamp mouth back + offset equals exhibit front at t=' + t,
   );
   ok(
     CLAMP.padFrontMm + CLAMP.gapMm + t > exhibitFrontMm(t) - 1e-9,
     'guides never pass the exhibit front at t=' + t,
   );
 }
+// 收回状态：连接其他模块/独立放置时滑块全收，压板背面与机芯前面齐平，
+// 节点外观收拢为完整立方体。
+ok(
+  sliderRetractMm() === -CLAMP.maxOutwardTravelMm &&
+    CLAMP.jawBackMm + sliderRetractMm() === CLAMP.padFrontMm,
+  'retracted slider brings press plate back flush with cartridge front (33.4 mm)',
+);
 // 挂点角色：底行承托、顶行限位、中间限位；单行全为承托。
 ok(mountRole(0, 0, 5) === 'lower-support', 'bottom row supports from below');
 ok(mountRole(5, 0, 5) === 'upper-limit', 'top row limits from above');

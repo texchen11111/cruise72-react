@@ -10,7 +10,6 @@ const result = await build({
       export * as THREE from 'three';
       export {createMaterials} from './src/scene/materials.js';
       export {createModuleBuilder} from './src/scene/moduleGeometry.js';
-      export {rectsMinusHoles} from './src/scene/models/surfaces.js';
       export {createAnimation} from './src/scene/animation.js';
       export {setupPointer} from './src/scene/pointer.js';
     `,
@@ -21,7 +20,7 @@ const result = await build({
   write: false,
   alias: { three: path.resolve('vendor/three.module.js') },
 });
-const { THREE, createMaterials, createModuleBuilder, createAnimation, setupPointer, rectsMinusHoles } = await import(
+const { THREE, createMaterials, createModuleBuilder, createAnimation, setupPointer } = await import(
   'data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64')
 );
 
@@ -103,21 +102,15 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
   const block = ctx.models.get('block');
   let blockSlider = false;
   block.traverse((o) => {
-    if (o.userData.slider) blockSlider = true;
+    if (o.userData.slider) {
+      blockSlider = true;
+      assert.ok(
+        Math.abs(o.position.z + 0.007) < 1e-9 && o.userData.slider.retract === true,
+        'standalone node slider is fully retracted to a complete cube',
+      );
+    }
   });
   assert.ok(blockSlider, 'block renders backplate + mechanism + slider groups');
-}
-// 展板缺角分解：四角 48² 挂点区开缺口后剩余板材应分成 7 块，无缺口时 1 块。
-{
-  const hole = 0.048;
-  const rects = rectsMinusHoles(15 * 0.048, 12 * 0.048, [
-    { x0: -15 * 0.024, y0: -12 * 0.024, x1: -15 * 0.024 + hole, y1: -12 * 0.024 + hole },
-    { x0: 15 * 0.024 - hole, y0: -12 * 0.024, x1: 15 * 0.024, y1: -12 * 0.024 + hole },
-    { x0: -15 * 0.024, y0: 12 * 0.024 - hole, x1: -15 * 0.024 + hole, y1: 12 * 0.024 },
-    { x0: 15 * 0.024 - hole, y0: 12 * 0.024 - hole, x1: 15 * 0.024, y1: 12 * 0.024 },
-  ]);
-  assert.equal(rects.length, 3, 'panel sheet splits into 3 rects around 4 corner apertures');
-  assert.equal(rectsMinusHoles(1, 1, []).length, 1);
 }
 // 挂在两根真实梯柱上的展板：四角节点装配、两承托两限位、厚度驱动滑块。
 {
@@ -154,8 +147,8 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
   assert.equal(anchors.length, 4, 'panel carries four derived mount anchors');
   assert.equal(sliders.length, 4, 'each derived node has a slider group');
   assert.ok(
-    sliders.every((s) => Math.abs(s.position.z - 0.006) < 1e-9),
-    'thickness 12 mm pushes every slider outward by 6 mm along the guides',
+    sliders.every((s) => Math.abs(s.position.z - 0.012) < 1e-9),
+    'thickness 12 mm drives every slider outward by 12 mm (press plate on exhibit front)',
   );
   assert.ok(
     mechanisms.filter((m) => m.userData.mechanism.role === 'upper-limit').length === 2 &&
@@ -177,8 +170,8 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
     if (o.userData.slider) rebuiltSliders.push(o);
   });
   assert.ok(
-    rebuiltSliders.every((s) => Math.abs(s.position.z + 0.005) < 1e-9),
-    'thickness 1 mm pulls every slider inward by 5 mm',
+    rebuiltSliders.every((s) => Math.abs(s.position.z - 0.001) < 1e-9),
+    'thickness 1 mm drives every slider outward by 1 mm',
   );
 }
 ctx.items = ctx.items.map((item) => ({ ...item, state: 1 }));

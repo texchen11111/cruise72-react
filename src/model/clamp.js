@@ -34,13 +34,17 @@ export function validThickness(t) {
   return Number.isFinite(t) && t >= lo && t <= hi;
 }
 
-// 厚度驱动滑块：背面固定在 jawBack（夹口恒定 7 mm），前压板随厚度整体外移
-// (t - 参考厚度) 始终贴住展板正面。行程在范围内为 [-5, +6] mm，全程不超过
-// maxOutwardTravelMm；展板中心相对参考位置仅偏移 ±(t-6)/2（最大 3 mm），
-// 在墙面比例下视觉稳定。范围外由 validThickness 拒绝。
+// 厚度驱动滑块（夹持状态）：前压板压在展板【正面】——压板背面贴住展板前面
+// （40.4 + t），双圆导柱穿过展板角部孔、端面与板面齐平并藏在压板后方。
+// 滑块偏移 = 厚度 t（1–12 mm）；±7 mm 的 maxOutwardTravel 指压板在导柱上的
+// 弹簧补偿行程（相对轴肩），不是滑块本身的移动范围。范围外由 validThickness 拒绝。
 export function sliderOffsetMm(t = CLAMP.referenceExhibitMm) {
-  return t - CLAMP.referenceExhibitMm;
+  return t;
 }
+
+// 非夹持状态（节点连接其他模块或独立放置）：滑块完全收回，压板背面与机芯
+// 前面（33.4 mm）齐平，节点外观收拢为完整立方体。
+export const sliderRetractMm = () => -CLAMP.maxOutwardTravelMm;
 
 // 展板在锚点坐标系中的位置：背面固定 ⇒ 夹口深度恒定，正面随厚度外移，
 // 中心偏差对称且不超过 3 mm（受 maxOutwardTravel 约束的中心稳定方案）。

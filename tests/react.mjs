@@ -98,10 +98,6 @@ try {
   await click('#toggleState');
   assert.equal(document.querySelector('#toggleState').textContent, '已取阅');
   dom.window.HTMLElement.prototype.scrollIntoView = function () {};
-  assert.equal(document.querySelectorAll('.gallery-story').length, 4);
-  await click('[data-gallery-use="3"]');
-  assert.equal(store.getSnapshot().exhibition, 3);
-  assert.equal(store.getSnapshot().preset, 0);
   assert.equal(globalThis.__sceneMounts, 1, 'React updates must not remount Three.js');
   await act(() => root.unmount());
   assert.equal(globalThis.__sceneUnmounts, 1, 'React unmount disposes renderer');

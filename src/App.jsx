@@ -3,7 +3,6 @@ import { MODULES as M, clone } from './model/index.js';
 import { Catalog } from './components/Catalog.jsx';
 import { Inspector } from './components/Inspector.jsx';
 import { Stage } from './components/Stage.jsx';
-import { SceneGallery } from './components/SceneGallery.jsx';
 import { AboutDialog } from './components/AboutDialog.jsx';
 export function download(url, name) {
   const a = document.createElement('a');
@@ -79,10 +78,7 @@ export default function App({ store }) {
           邮轮72变<small>48 MM NODE SYSTEM</small>
         </div>
         <div className="headlinks">
-          <a className="gallery-nav" href="#scene-gallery">
-            场景图册
-          </a>
-          <span className="pill">V4.8 · 挂接修复版</span>
+          <span className="pill">V4.9 · Rhino 真实网格版</span>
           <a href="https://cruise72-react.2161598874.workers.dev/" target="_blank" rel="noopener">
             项目网站 ↗
           </a>
@@ -94,14 +90,8 @@ export default function App({ store }) {
           </a>
         </div>
       </header>
-      <SceneGallery store={store} />
       <section id="planner-section" className="planner-section" aria-labelledby="planner-heading">
         <div className="planner-heading">
-          <div>
-            <div className="eyebrow">72+ / CONFIGURATOR</div>
-            <h2 id="planner-heading">自定义专属墙面</h2>
-            <p>以 48 mm 为一步，调整节点、模块与组合。</p>
-          </div>
           <button className="primary export" id="export" onClick={exportConfig}>
             导出方案 ↓
           </button>

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import assembly from './rhino/assembly.json';
-import { MM, sliderOffsetMm } from '../../model/clamp.js';
+import { MM, sliderOffsetMm, sliderRetractMm } from '../../model/clamp.js';
 
 // Rhino V3 真实网格（毫米 → 米）。导出脚本 scripts/export-rhino.py 从
 // models/rhino/source/ladder-node.3dm 提取，双写到 models/rhino/generated/
@@ -45,7 +45,9 @@ function materialForPart(part, mats) {
   if (part.role === 'slider') {
     if (part.name.includes('圆导柱')) return mats.silver;
     if (part.name.includes('轴尾防拔')) return mats.dark;
-    return mats.white;
+    // 前压板用品牌蓝：压在展板正面时必须可见（ Rhino 参考里同为蓝色），
+    // 不能用与展板同色的白。
+    return mats.blue;
   }
   // 梯柱：主轨银色，横档深色。
   return part.name === 'ladder-part-24' ? mats.silver : mats.dark;
@@ -77,19 +79,21 @@ export function buildRhinoPillar(g, hMeters, mats) {
 // 节点装配：背板（挂钩，始终向下）+ 机芯（允许转向）+ 滑块（随厚度整体移动）。
 // 锚点是无几何 Object3D，世界位置 = (格中心 x, 格中心 y, gz*48+24 mm)，
 // 测试与导出都以此对齐。上挂点机芯绕 z 轴转 180°，背板不转。
+// retract = true 时滑块完全收回（压板与机芯前面齐平，节点呈完整立方体），
+// 用于不夹持平面展具、只连接其他模块的节点。
 export function buildRhinoNode(g, x, y, z, opts = {}) {
-  const { role = 'standalone', thicknessMm = 6, point = null, mats } = opts;
+  const { role = 'standalone', thicknessMm = 6, point = null, mats, retract = false } = opts;
   const node = new THREE.Group();
   node.position.set(x, y, z);
   addRoleMeshes(node, 'backplate', mats);
   const mechanism = new THREE.Group();
-  mechanism.userData.mechanism = { role, ownerId: opts?.ownerId ?? null };
+  mechanism.userData.mechanism = { role, ownerId: opts?.ownerId ?? null, retract };
   if (role === 'upper-limit') mechanism.rotation.z = Math.PI;
   addRoleMeshes(mechanism, 'cartridge', mats);
   const slider = new THREE.Group();
-  const offsetMm = sliderOffsetMm(thicknessMm);
+  const offsetMm = retract ? sliderRetractMm() : sliderOffsetMm(thicknessMm);
   slider.position.z = offsetMm * MM;
-  slider.userData.slider = { offsetMm, ownerId: opts?.ownerId ?? null };
+  slider.userData.slider = { offsetMm, ownerId: opts?.ownerId ?? null, retract };
   addRoleMeshes(slider, 'slider', mats);
   mechanism.add(slider);
   node.add(mechanism);

@@ -12,6 +12,7 @@ export function createMaterials() {
     });
   const silver = mat('#d9dadb', 0.92),
     orange = mat('#ed8e40'),
+    blue = mat('#3158e8'),
     dark = mat('#343e4e'),
     white = mat('#edece7'),
     glass = new THREE.MeshPhysicalMaterial({
@@ -52,6 +53,6 @@ export function createMaterials() {
     t.colorSpace = THREE.SRGBColorSpace;
     return new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 });
   }
-  const shared = { silver, orange, dark, white, glass };
+  const shared = { silver, orange, blue, dark, white, glass };
   return { mat, textTexture, shared, isShared: (m) => Object.values(shared).includes(m) };
 }

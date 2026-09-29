@@ -164,7 +164,10 @@ export function createPlannerScene(stage, store, options = {}) {
       return ctx.renderer.domElement.toDataURL('image/png');
     },
     // 调试/自动化专用：把相机放到指定机位（不退出 OrbitControls 管理）。
+    // 特写机位会突破交互用的 minDistance，这里按机位距离临时放宽。
     debugCamera: (pos, target) => {
+      const d = Math.hypot(pos[0] - target[0], pos[1] - target[1], pos[2] - target[2]);
+      ctx.orbit.minDistance = Math.min(1.8, Math.max(0.02, d * 0.9));
       ctx.camera.position.set(pos[0], pos[1], pos[2]);
       ctx.orbit.target.set(target[0], target[1], target[2]);
       ctx.orbit.update();

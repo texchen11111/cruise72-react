@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { PRESETS, EXHIBITIONS, MODULES } from '../model/index.js';
-import { ModelPreview } from './ModelPreview.jsx';
 import { createPlannerScene } from '../scene/createPlannerScene.js';
 import { createFallbackPlanner } from '../scene/fallbackPlanner.js';
 export function Stage({ state, store, onDownload }) {
@@ -123,7 +122,6 @@ export function Stage({ state, store, onDownload }) {
                   store.setExhibition(i);
                 }}
               >
-                <ModelPreview items={ex.items} cacheKey={ex.id} />
                 <span className="exhibition-label">
                   <b>{ex.name}</b>
                   <small>{ex.tag}</small>
