@@ -9,6 +9,7 @@ export function Stage({ state, store, onDownload }) {
   useEffect(() => {
     try {
       engine.current = createPlannerScene(container.current, store);
+      window.__plannerCamera = engine.current.debugCamera;
     } catch (e) {
       engine.current = createFallbackPlanner(container.current, store);
       store.setError(
@@ -17,6 +18,7 @@ export function Stage({ state, store, onDownload }) {
       console.error(e);
     }
     return () => {
+      delete window.__plannerCamera;
       engine.current?.destroy();
       engine.current = null;
     };

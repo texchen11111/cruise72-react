@@ -144,6 +144,52 @@ for (let i = 0; i < 4; i++) {
 }
 assert.equal(store.resizeItem('a', [16, 12, 1]), true);
 assertMountGeometry();
+// 厚度驱动：滑块随厚度沿导柱移动，锚点世界位置不动；非法厚度被拒绝。
+const slidersOf = (ownerId) => {
+  const found = [];
+  renderer.scene.traverse((object) => {
+    if (object.userData.slider && object.userData.slider.ownerId === ownerId) found.push(object);
+  });
+  return found;
+};
+const mechanismsOf = (ownerId) => {
+  const found = [];
+  renderer.scene.traverse((object) => {
+    if (object.userData.mechanism && object.userData.mechanism.ownerId === ownerId)
+      found.push(object);
+  });
+  return found;
+};
+{
+  const upper = mechanismsOf('a').filter((m) => m.userData.mechanism.role === 'upper-limit');
+  assert.equal(upper.length, 2, 'panel top row renders two upper-limit nodes');
+  assert.ok(
+    upper.every((m) => m.rotation.z === Math.PI),
+    'upper-limit nodes rotate the clamp mechanism while hooks stay down',
+  );
+  const sliders = slidersOf('a');
+  assert.equal(sliders.length, 4, 'panel renders four slider groups');
+  assert.ok(sliders.every((s) => s.position.z === 0), 'sliders start at reference thickness');
+  assert.equal(store.patchItem('a', { exhibitMm: 12 }), true);
+  assertMountGeometry();
+  assert.ok(
+    slidersOf('a').every((s) => Math.abs(s.position.z - 0.006) < 1e-9),
+    '12 mm thickness pushes all four sliders outward by exactly 6 mm',
+  );
+  assert.equal(store.patchItem('a', { exhibitMm: 99 }), false);
+  assert.equal(
+    store.getSnapshot().items.find((a) => a.id === 'a').exhibitMm,
+    12,
+    'out-of-range thickness is rejected and state is unchanged',
+  );
+  assert.match(store.getSnapshot().toast, /1–12/);
+  assert.equal(store.patchItem('a', { exhibitMm: 6 }), true);
+  assertMountGeometry();
+  assert.ok(
+    slidersOf('a').every((s) => s.position.z === 0),
+    'sliders return to reference after restoring thickness',
+  );
+}
 store.setExhibition(2);
 // 完成切换动画后再核验，旧模型应退出场景。
 for (let i = 0; i < 150; i++) frames.get(1)();

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import { MODULES as M, GRID, cells, assembly } from '../model/index.js';
+import { MODULES as M, GRID, cells, assembly, isExhibitType, CLAMP } from '../model/index.js';
 import { Icon } from './Icon.jsx';
 
 // Commit on blur/Enter, matching the original native change event. Local draft
@@ -71,6 +71,50 @@ function Dimension({ a, axis, index, store }) {
     </div>
   );
 }
+function Thickness({ a, store }) {
+  const [draft, setDraft] = useState(String(a.exhibitMm ?? CLAMP.referenceExhibitMm));
+  useEffect(
+    () => setDraft(String(a.exhibitMm ?? CLAMP.referenceExhibitMm)),
+    [a.id, a.exhibitMm],
+  );
+  const [lo, hi] = CLAMP.exhibitRangeMm;
+  const commit = () => {
+    const value = Number(draft);
+    if (value !== a.exhibitMm) store.patchItem(a.id, { exhibitMm: value });
+    setDraft(
+      String(
+        store.getSnapshot().items.find((x) => x.id === a.id)?.exhibitMm ??
+          a.exhibitMm ??
+          CLAMP.referenceExhibitMm,
+      ),
+    );
+  };
+  return (
+    <>
+      <div className="row">
+        <label htmlFor="exhibitMm">展板厚度 / mm</label>
+        <input
+          id="exhibitMm"
+          type="number"
+          min={lo}
+          max={hi}
+          step="1"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === 'Enter' && commit()}
+        />
+        <span className="unitread">夹口 {CLAMP.gapMm} mm</span>
+      </div>
+      <div className="rangeends">
+        <span>
+          前压板随厚度沿 Ø{CLAMP.guideDiameterMm} 导柱移动 ±{CLAMP.maxOutwardTravelMm} mm
+          内；超出 {lo}–{hi} mm 会被拒绝。
+        </span>
+      </div>
+    </>
+  );
+}
 function ModuleDetails({ a, store }) {
   const m = M[a.type],
     parts = assembly(a.type);
@@ -125,6 +169,12 @@ function ModuleDetails({ a, store }) {
       {['x', 'y', 'z'].map((axis, index) => (
         <Dimension key={axis} a={a} axis={axis} index={index} store={store} />
       ))}
+      {a.type === 'panel' && <Thickness a={a} store={store} />}
+      {isExhibitType(a.type) && a.type !== 'panel' && (
+        <p className="conceptnote">
+          薄界面按 Rhino 参考厚度 {CLAMP.referenceExhibitMm} mm 夹持；厚度参数在平面展陈上调节。
+        </p>
+      )}
       <p className="warning">
         {a.gz ? '离墙叠放：需要独立连接件及承力结构。' : '贴墙层：需以适配背板连接真实梯柱。'}
       </p>

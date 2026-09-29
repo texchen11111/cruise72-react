@@ -1,17 +1,29 @@
 import * as THREE from 'three';
-import { MODULES as M, PITCH, mountPoints, mountingKey, position, cells } from '../model/index.js';
+import {
+  MODULES as M,
+  PITCH,
+  mountPoints,
+  mountingKey,
+  position,
+  cells,
+  CLAMP,
+  isExhibitType,
+} from '../model/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
-import { buildSurface } from './models/surfaces.js';
+import { buildSurface, rectsMinusHoles } from './models/surfaces.js';
+
+const REF = CLAMP.referenceExhibitMm;
+// 模块坐标系中薄板背面的 z：锚点（gz*48+24 mm）+ 夹口背侧 40.4 mm。
+const exhibitBackZ = (a, gz) => (gz - a.gz) * PITCH + (CLAMP.anchorFromGridZMm + CLAMP.jawBackMm) * 0.001;
 
 export function createModuleBuilder(ctx) {
   const { mat, textTexture, shared } = ctx.materials;
   const { silver, orange, dark, white, glass } = shared;
-  function node(g, x, y, co, z = 0.024, point = null) {
-    const b = mat(co);
-    const body = cube(g, 0.048, 0.048, 0.048, x, y, z, b);
-    if (point) body.userData.mountPoint = point;
-    cube(g, 0.016, 0.004, 0.001, x, y, z + 0.0235, silver);
+  const nodeMats = { silver, orange, dark, white };
+  // 派生/真实节点：Rhino 装配（背板 + 机芯 + 滑块），锚点携带挂点数据。
+  function node(g, x, y, z, { role, thicknessMm, ownerId }, point = null) {
+    buildRhinoNode(g, x, y, z, { role, thicknessMm, ownerId, point, mats: nodeMats });
   }
 
   function buildModule(a) {
@@ -23,17 +35,55 @@ export function createModuleBuilder(ctx) {
     g.userData.id = a.id;
     g.position.set(...position(a));
     let act = null;
-    if (a.type === 'pillar') buildRhinoPillar(g, w, h, d, silver, dark);
-    else if (a.type === 'block') buildRhinoNode(g, w, h, d, silver, orange, dark);
-    else if (['pegboard', 'mesh', 'metal', 'rope'].includes(a.type))
-      buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange });
-    else if (a.type === 'panel' || a.type === 'acoustic' || a.type === 'sign') {
-      const depth = a.type === 'panel' ? 0.006 : 0.025;
+    // 薄界面（panel 与四种拓展界面）先取派生挂点：板材缺口与背面位置都由机械层决定。
+    const pts = a.type !== 'block' && m.mount ? mountPoints(a, ctx.items || []) : [];
+    const holes = pts.map((p) => {
+      const cx = (p.gx + 0.5 - (a.gx + w / PITCH / 2)) * PITCH,
+        cy = (p.gy + 0.5 - (a.gy + h / PITCH / 2)) * PITCH;
+      return { x0: cx - PITCH / 2, y0: cy - PITCH / 2, x1: cx + PITCH / 2, y1: cy + PITCH / 2 };
+    });
+    const thicknessMm = a.exhibitMm ?? REF;
+    const backZ = pts.length ? exhibitBackZ(a, pts[0].gz) : exhibitBackZ(a, a.gz);
+    if (a.type === 'pillar') buildRhinoPillar(g, h, nodeMats);
+    else if (a.type === 'block')
+      node(g, 0, 0, CLAMP.anchorFromGridZMm * 0.001, {
+        role: 'standalone',
+        thicknessMm,
+        ownerId: a.id,
+      });
+    else if (['pegboard', 'mesh', 'metal', 'rope'].includes(a.type)) {
+      // 网状/绳挂界面保留完整张紧面（夹板压网即机构本身）；板类开 48² 挂点缺口。
+      const sheetHoles = ['mesh', 'rope'].includes(a.type) ? [] : holes;
+      buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange }, { backZ, holes: sheetHoles });
+    } else if (a.type === 'panel') {
+      const depth = thicknessMm * 0.001;
+      for (const r of rectsMinusHoles(w, h, holes)) {
+        const rw = r.x1 - r.x0,
+          rh = r.y1 - r.y0;
+        cube(g, rw, rh, depth, (r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2, backZ + depth / 2, white);
+      }
+      const front = new THREE.Mesh(
+        holes.length
+          ? (() => {
+              // 画面收缩到四角缺口之间的中央区，文字不跨越节点装配区。
+              const left = Math.max(...holes.filter((r) => (r.x0 + r.x1) / 2 < 0).map((r) => r.x1)),
+                right = Math.min(...holes.filter((r) => (r.x0 + r.x1) / 2 > 0).map((r) => r.x0)),
+                bottom = Math.max(...holes.filter((r) => (r.y0 + r.y1) / 2 < 0).map((r) => r.y1)),
+                top = Math.min(...holes.filter((r) => (r.y0 + r.y1) / 2 > 0).map((r) => r.y0));
+              return new THREE.PlaneGeometry(right - left - 0.012, top - bottom - 0.012);
+            })()
+          : new THREE.PlaneGeometry(w - 0.012, h - 0.012),
+        textTexture('ON THE OCEAN', '72+ / 48 mm system'),
+      );
+      front.position.set(0, 0, backZ + depth + 0.001);
+      g.add(front);
+    } else if (a.type === 'acoustic' || a.type === 'sign') {
+      const depth = a.type === 'sign' ? 0.025 : 0.025;
       cube(g, w, h, depth, 0, 0, 0.025, a.type === 'acoustic' ? mat('#829f9e') : white);
-      if (a.type !== 'acoustic') {
+      if (a.type === 'sign') {
         const front = new THREE.Mesh(
           new THREE.PlaneGeometry(w - 0.012, h - 0.012),
-          textTexture(a.type === 'sign' ? 'WELCOME' : 'ON THE OCEAN', '72+ / 48 mm system'),
+          textTexture('WELCOME', '72+ / 48 mm system'),
         );
         front.position.set(0, 0, 0.025 + depth / 2 + 0.001);
         g.add(front);
@@ -161,11 +211,10 @@ export function createModuleBuilder(ctx) {
     }
     if (a.type !== 'block' && m.mount) {
       // 主场景只画有效挂点；独立目录缩略图才使用四角示意。
-      const pts = mountPoints(a, ctx.items || []);
       if (pts.length) {
-        const [w, h] = cells(a);
-        const cx = a.gx + w / 2,
-          cy = a.gy + h / 2;
+        const [cw, ch] = cells(a);
+        const cx = a.gx + cw / 2,
+          cy = a.gy + ch / 2;
         for (const p of pts) {
           const realNode = ctx.items.find(
             (b) =>
@@ -180,34 +229,26 @@ export function createModuleBuilder(ctx) {
               g,
               (p.gx + 0.5 - cx) * PITCH,
               (p.gy + 0.5 - cy) * PITCH,
-              a.color,
-              (p.gz - a.gz) * PITCH + 0.024,
+              (p.gz - a.gz) * PITCH + CLAMP.anchorFromGridZMm * 0.001,
+              {
+                role: p.role,
+                // 只有薄界面展品随厚度驱动滑块；其余模块滑块停在参考位。
+                thicknessMm: isExhibitType(a.type) ? thicknessMm : REF,
+                ownerId: a.id,
+              },
               p,
-            );
-        }
-        const z = (pts[0].gz - a.gz) * PITCH + 0.024;
-        const cols = [...new Set(pts.map((p) => p.gx))];
-        if (m.mount === 4 && cols.length >= 2) {
-          const x1 = (cols[0] + 0.5 - cx) * PITCH,
-            x2 = (cols[cols.length - 1] + 0.5 - cx) * PITCH;
-          for (const gy of new Set(pts.map((p) => p.gy)))
-            cube(
-              g,
-              x2 - x1,
-              0.012,
-              0.012,
-              (x1 + x2) / 2,
-              (gy + 0.5 - cy) * PITCH,
-              z - 0.006,
-              silver,
             );
         }
       } else if (ctx.preview && !ctx.items.some((item) => item.type === 'pillar')) {
         const xs = m.mount === 4 || a.type === 'rail' ? [-w / 2 + 0.024, w / 2 - 0.024] : [0];
         const ys = a.type === 'rail' ? [0] : [-h / 2 + 0.024, h / 2 - 0.024];
-        for (const x of xs) for (const y of ys) node(g, x, y, a.color);
-        if (m.mount === 4)
-          for (const y of ys) cube(g, w - 0.048, 0.012, 0.012, 0, y, 0.018, silver);
+        for (const x of xs)
+          for (const y of ys)
+            node(g, x, y, CLAMP.anchorFromGridZMm * 0.001, {
+              role: 'standalone',
+              thicknessMm: REF,
+              ownerId: a.id,
+            });
       }
     }
     g.userData.act = act;
@@ -231,7 +272,8 @@ export function createModuleBuilder(ctx) {
     if (!g) return;
     ctx.scene.remove(g);
     g.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
+      // Rhino 网格模板全局共享，归 rhino.js 所有，这里绝不 dispose。
+      if (o.geometry && !o.geometry.userData.rhinoShared) o.geometry.dispose();
       if (
         o.material &&
         !Object.values({ silver, orange, dark, white, glass }).includes(o.material)

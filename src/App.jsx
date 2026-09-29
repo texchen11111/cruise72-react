@@ -55,6 +55,7 @@ export default function App({ store }) {
       setPreset: store.setPreset,
       addItem: store.addItem,
       moveItem: store.moveItem,
+      patchItem: store.patchItem,
       modules: M,
     };
     return () => {

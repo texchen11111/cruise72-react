@@ -14,6 +14,13 @@ import {
   mountPoints,
   prepareLayout,
   mounted,
+  CLAMP,
+  validThickness,
+  sliderOffsetMm,
+  exhibitBackMm,
+  exhibitFrontMm,
+  exhibitCenterMm,
+  mountRole,
 } from '../src/model/index.js';
 let checks = 0;
 const ok = (v, m) => {
@@ -165,4 +172,66 @@ ok(
   cells({ type: 'worktop', state: 0 }).join() == cells({ type: 'worktop', state: 1 }).join(),
   'fold reserve retained',
 );
+// 机械参数层（clamp.js）与 48 mm 网格是两套数据，禁止互相换算。
+ok(CLAMP.gapMm === CLAMP.jawBackMm - CLAMP.padFrontMm, 'clamp mouth depth = jawBack - padFront');
+ok(CLAMP.guideDiameterMm === 6 && CLAMP.guideLengthMm === 30, 'guide rod Ø6 × 30 mm');
+ok(
+  48 % CLAMP.rungPitchMm !== 0 && CLAMP.rungPitchMm % 48 !== 0,
+  '25 mm rung pitch and the 48 mm grid never align (two-layer data)',
+);
+// 厚度合法性：范围 1–12 mm，之外拒绝。
+ok(!validThickness(0) && !validThickness(13) && !validThickness(NaN), 'thickness out of range rejected');
+ok(validThickness(1) && validThickness(12) && validThickness(6.5), 'thickness range accepted');
+// 中心稳定（背面固定 ⇒ 中心相对参考仅偏移 (t-6)/2，最大 3 mm）且压板全程贴合。
+ok(exhibitBackMm() === CLAMP.jawBackMm, 'exhibit back fixed at jawBack (clamp mouth constant)');
+ok(exhibitFrontMm(6) === 46.4 && exhibitFrontMm(12) === 52.4, 'exhibit front tracks thickness');
+ok(
+  exhibitCenterMm(6) === 43.4 &&
+    exhibitCenterMm(12) - 43.4 === 3 &&
+    43.4 - exhibitCenterMm(1) === 2.5,
+  'exhibit centre deviates from the reference by exactly (t-6)/2 mm',
+);
+ok(
+  Math.abs(exhibitCenterMm(CLAMP.exhibitRangeMm[0]) - 43.4) <= 3 &&
+    Math.abs(exhibitCenterMm(CLAMP.exhibitRangeMm[1]) - 43.4) <= 3,
+  'exhibit centre stays within 3 mm of the reference across the range',
+);
+ok(
+  exhibitFrontMm(1) - 40.4 === sliderOffsetMm(1) + CLAMP.referenceExhibitMm &&
+    exhibitFrontMm(12) - 40.4 === sliderOffsetMm(12) + CLAMP.referenceExhibitMm,
+  'press plate stays in contact with the exhibit front at any valid thickness',
+);
+// 滑块行程：厚度变化驱动前压板，全程不超过 ±maxOutwardTravel。
+ok(sliderOffsetMm(6) === 0, 'slider at reference thickness');
+for (let t = CLAMP.exhibitRangeMm[0]; t <= CLAMP.exhibitRangeMm[1]; t++) {
+  ok(
+    Math.abs(sliderOffsetMm(t)) <= CLAMP.maxOutwardTravelMm,
+    'slider travel within ±' + CLAMP.maxOutwardTravelMm + ' mm at t=' + t,
+  );
+  ok(
+    CLAMP.padFrontMm + CLAMP.gapMm + t > exhibitFrontMm(t) - 1e-9,
+    'guides never pass the exhibit front at t=' + t,
+  );
+}
+// 挂点角色：底行承托、顶行限位、中间限位；单行全为承托。
+ok(mountRole(0, 0, 5) === 'lower-support', 'bottom row supports from below');
+ok(mountRole(5, 0, 5) === 'upper-limit', 'top row limits from above');
+ok(mountRole(2, 0, 5) === 'middle', 'middle row is a middle limiter');
+ok(mountRole(3, 3, 3) === 'lower-support', 'single row counts as support');
+// 预设里展板的四个挂点必须两承托两限位，且角色随数据导出。
+{
+  const laid = prepareLayout(EXHIBITIONS[0].items);
+  const panel = laid.find((a) => a.type === 'panel');
+  const pts = mountPoints(panel, laid);
+  ok(pts.length === 4, 'panel has four mount points');
+  ok(
+    pts.filter((p) => p.role === 'lower-support').length === 2 &&
+      pts.filter((p) => p.role === 'upper-limit').length === 2,
+    'panel corners: two lower supports and two upper limiters',
+  );
+  ok(
+    pts.every((p) => p.gy === panel.gy || p.gy === panel.gy + cells(panel)[1] - 1),
+    'panel mount rows on bottom and top edges',
+  );
+}
 console.log(checks + ' grid assertions passed; all space and exhibition presets valid.');

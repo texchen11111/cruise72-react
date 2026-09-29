@@ -163,6 +163,12 @@ export function createPlannerScene(stage, store, options = {}) {
       ctx.renderer.render(ctx.scene, ctx.camera);
       return ctx.renderer.domElement.toDataURL('image/png');
     },
+    // 调试/自动化专用：把相机放到指定机位（不退出 OrbitControls 管理）。
+    debugCamera: (pos, target) => {
+      ctx.camera.position.set(pos[0], pos[1], pos[2]);
+      ctx.orbit.target.set(target[0], target[1], target[2]);
+      ctx.orbit.update();
+    },
     destroy,
   };
 }

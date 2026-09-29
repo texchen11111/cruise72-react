@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createPlannerStore } from '../src/store/index.js';
-import { PRESETS, clone, prepareLayout, mounted } from '../src/model/index.js';
+import { PRESETS, clone, prepareLayout, mounted, CLAMP } from '../src/model/index.js';
 const s = createPlannerStore();
 let notifications = 0;
 const off = s.subscribe(() => notifications++);
@@ -68,6 +68,33 @@ try {
   assert.ok(
     d.modules.every((m) => !String(m.id).includes(':mp:')),
     'connection points never leak into modules',
+  );
+  // 展板厚度：机械层参数，范围外拒绝并提示；导出带角色与机械尺寸。
+  assert.equal(s.patchItem('a', { exhibitMm: 99 }), false, '非法厚度被拒绝');
+  assert.equal(
+    s.getSnapshot().items.find((a) => a.id === 'a').exhibitMm,
+    6,
+    '拒绝后厚度保持参考值',
+  );
+  assert.match(s.getSnapshot().toast, /1–12/);
+  assert.equal(s.patchItem('a', { exhibitMm: 10 }), true);
+  const cn = s.exportData().connection_nodes.filter((n) => n.owner_id === 'a');
+  assert.equal(cn.length, 4, 'panel exports four connection nodes');
+  assert.equal(cn.filter((n) => n.role === 'lower-support').length, 2, 'two lower supports');
+  assert.equal(cn.filter((n) => n.role === 'upper-limit').length, 2, 'two upper limiters');
+  assert.ok(
+    cn.every(
+      (n) =>
+        n.clamp.guideDiameterMm === 6 &&
+        n.clamp.jawBackMm === 40.4 &&
+        n.exhibitMm === 10 &&
+        n.sliderOffsetMm === 4,
+    ),
+    'connection nodes carry mechanical clamp data and live thickness',
+  );
+  assert.ok(
+    cn.every((n) => n.anchor_world_mm[2] === n.gz * 48 + CLAMP.anchorFromGridZMm),
+    'exported anchor equals the on-screen node anchor plane',
   );
   s.togglePlay();
   assert.equal(s.getSnapshot().playing, true);

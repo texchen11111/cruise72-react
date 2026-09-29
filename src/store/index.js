@@ -17,6 +17,9 @@ import {
   snapExtension,
   mountPoints,
   mounted,
+  CLAMP,
+  validThickness,
+  sliderOffsetMm,
 } from '../model/index.js';
 
 // React reads immutable snapshots through useSyncExternalStore. Three.js consumes
@@ -209,8 +212,21 @@ export function createPlannerStore() {
     if (EXHIBITIONS[i]) applyLayout(0, i);
   }
   function patchItem(id, patch) {
-    update({ items: state.items.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
+    const a = state.items.find((x) => x.id === id);
+    if (!a) return false;
+    // 展板厚度是机械层参数：超出 Rhino 夹持范围（1–12 mm）直接拒绝并提示，
+    // 避免画面出现导柱穿板或滑块超程的无效状态。
+    if (patch.exhibitMm !== undefined) {
+      const t = Number(patch.exhibitMm);
+      if (!validThickness(t)) {
+        toast('展板厚度需在 1–12 mm 范围内');
+        return false;
+      }
+      patch = { ...patch, exhibitMm: Math.round(t * 10) / 10 };
+    }
+    update({ items: state.items.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
     changed();
+    return true;
   }
   function resizeItem(id, sizeCells, commit = true) {
     const a = state.items.find((x) => x.id === id);
@@ -280,11 +296,29 @@ export function createPlannerStore() {
         assembly: assembly(a.type),
       })),
       // 派生挂接点：由父子关系按梯柱列派生，仅供几何/建模引用，不计入模块数量。
+      // role 与画面中的节点装配一致（底行承托 / 顶行限位 / 中间），机械参数
+      // 直接给出毫米值，不与 48 mm 网格互相换算。
       connection_nodes: state.items.flatMap((a) =>
         mountPoints(a, state.items).map((p) => ({
           ...p,
           owner_name: M[a.type].name,
           position_grid_mm: [p.gx, p.gy, p.gz].map((v) => v * 48),
+          anchor_world_mm: [
+            Math.round((p.gx + 0.5) * 48 + 10),
+            Math.round((p.gy + 0.5) * 48 + 10),
+            Math.round(p.gz * 48 + CLAMP.anchorFromGridZMm),
+          ],
+          exhibitMm: a.exhibitMm ?? CLAMP.referenceExhibitMm,
+          sliderOffsetMm: sliderOffsetMm(a.exhibitMm ?? CLAMP.referenceExhibitMm),
+          clamp: {
+            padFrontMm: CLAMP.padFrontMm,
+            jawBackMm: CLAMP.jawBackMm,
+            gapMm: CLAMP.gapMm,
+            guideDiameterMm: CLAMP.guideDiameterMm,
+            guideLengthMm: CLAMP.guideLengthMm,
+            maxOutwardTravelMm: CLAMP.maxOutwardTravelMm,
+            exhibitRangeMm: CLAMP.exhibitRangeMm,
+          },
         })),
       ),
     };

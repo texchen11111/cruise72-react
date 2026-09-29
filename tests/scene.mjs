@@ -10,6 +10,7 @@ const result = await build({
       export * as THREE from 'three';
       export {createMaterials} from './src/scene/materials.js';
       export {createModuleBuilder} from './src/scene/moduleGeometry.js';
+      export {rectsMinusHoles} from './src/scene/models/surfaces.js';
       export {createAnimation} from './src/scene/animation.js';
       export {setupPointer} from './src/scene/pointer.js';
     `,
@@ -20,7 +21,7 @@ const result = await build({
   write: false,
   alias: { three: path.resolve('vendor/three.module.js') },
 });
-const { THREE, createMaterials, createModuleBuilder, createAnimation, setupPointer } = await import(
+const { THREE, createMaterials, createModuleBuilder, createAnimation, setupPointer, rectsMinusHoles } = await import(
   'data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64')
 );
 
@@ -85,6 +86,101 @@ for (const item of ctx.items) {
 assert.equal(ctx.models.size, 17);
 assert.equal(builder.buildProps, undefined, 'decorative rails are removed');
 assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra rails');
+
+// Rhino 真实网格：梯柱与节点不再是立方体/圆柱近似。
+{
+  const pillar = ctx.models.get('pillar');
+  let pillarMeshes = 0,
+    pillarTris = 0;
+  pillar.traverse((o) => {
+    if (o.isMesh && o.userData.rhinoPart) {
+      pillarMeshes++;
+      pillarTris += o.geometry.index.count / 3;
+    }
+  });
+  assert.ok(pillarMeshes >= 25, 'pillar renders the Rhino part set across stacked segments');
+  assert.ok(pillarTris > 2000, 'pillar triangle budget comes from the real ladder mesh');
+  const block = ctx.models.get('block');
+  let blockSlider = false;
+  block.traverse((o) => {
+    if (o.userData.slider) blockSlider = true;
+  });
+  assert.ok(blockSlider, 'block renders backplate + mechanism + slider groups');
+}
+// 展板缺角分解：四角 48² 挂点区开缺口后剩余板材应分成 7 块，无缺口时 1 块。
+{
+  const hole = 0.048;
+  const rects = rectsMinusHoles(15 * 0.048, 12 * 0.048, [
+    { x0: -15 * 0.024, y0: -12 * 0.024, x1: -15 * 0.024 + hole, y1: -12 * 0.024 + hole },
+    { x0: 15 * 0.024 - hole, y0: -12 * 0.024, x1: 15 * 0.024, y1: -12 * 0.024 + hole },
+    { x0: -15 * 0.024, y0: 12 * 0.024 - hole, x1: -15 * 0.024 + hole, y1: 12 * 0.024 },
+    { x0: 15 * 0.024 - hole, y0: 12 * 0.024 - hole, x1: 15 * 0.024, y1: 12 * 0.024 },
+  ]);
+  assert.equal(rects.length, 3, 'panel sheet splits into 3 rects around 4 corner apertures');
+  assert.equal(rectsMinusHoles(1, 1, []).length, 1);
+}
+// 挂在两根真实梯柱上的展板：四角节点装配、两承托两限位、厚度驱动滑块。
+{
+  const mountCtx = {
+    ...ctx,
+    scene: new THREE.Scene(),
+    models: new Map(),
+    items: [
+      { id: 'p1', type: 'pillar', gx: 3, gy: 0, gz: 0, state: 0, color: '#3158e8' },
+      { id: 'p2', type: 'pillar', gx: 18, gy: 0, gz: 0, state: 0, color: '#3158e8' },
+      {
+        id: 'x',
+        type: 'panel',
+        gx: 3,
+        gy: 10,
+        gz: 0,
+        state: 0,
+        color: '#3158e8',
+        exhibitMm: 12,
+      },
+    ],
+  };
+  const mountBuilder = createModuleBuilder(mountCtx);
+  for (const item of mountCtx.items) mountBuilder.buildModule(item);
+  const panel = mountCtx.models.get('x');
+  const sliders = [],
+    mechanisms = [],
+    anchors = [];
+  panel.traverse((o) => {
+    if (o.userData.slider) sliders.push(o);
+    if (o.userData.mechanism) mechanisms.push(o);
+    if (o.userData.mountPoint) anchors.push(o);
+  });
+  assert.equal(anchors.length, 4, 'panel carries four derived mount anchors');
+  assert.equal(sliders.length, 4, 'each derived node has a slider group');
+  assert.ok(
+    sliders.every((s) => Math.abs(s.position.z - 0.006) < 1e-9),
+    'thickness 12 mm pushes every slider outward by 6 mm along the guides',
+  );
+  assert.ok(
+    mechanisms.filter((m) => m.userData.mechanism.role === 'upper-limit').length === 2 &&
+      mechanisms.filter((m) => m.userData.mechanism.role === 'lower-support').length === 2,
+    'top row limits, bottom row supports',
+  );
+  assert.ok(
+    mechanisms
+      .filter((m) => m.userData.mechanism.role === 'upper-limit')
+      .every((m) => m.rotation.z === Math.PI),
+    'upper-limit nodes rotate the clamp mechanism 180° while hooks stay down',
+  );
+  // 厚度变化时锚点（节点基准面）不随滑块移动。
+  mountCtx.items = mountCtx.items.map((a) => (a.id === 'x' ? { ...a, exhibitMm: 1 } : a));
+  mountBuilder.dispose(panel);
+  const rebuilt = mountBuilder.buildModule(mountCtx.items.find((a) => a.id === 'x'));
+  const rebuiltSliders = [];
+  rebuilt.traverse((o) => {
+    if (o.userData.slider) rebuiltSliders.push(o);
+  });
+  assert.ok(
+    rebuiltSliders.every((s) => Math.abs(s.position.z + 0.005) < 1e-9),
+    'thickness 1 mm pulls every slider inward by 5 mm',
+  );
+}
 ctx.items = ctx.items.map((item) => ({ ...item, state: 1 }));
 const animation = createAnimation(ctx);
 animation.update();

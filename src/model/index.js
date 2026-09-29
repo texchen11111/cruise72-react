@@ -1,6 +1,18 @@
 export const PITCH = 0.048,
   GRID = [60, 60, 24],
   ORIGIN = [-1.44, 0.01, 0];
+export {
+  CLAMP,
+  MM,
+  isExhibitType,
+  validThickness,
+  sliderOffsetMm,
+  exhibitBackMm,
+  exhibitFrontMm,
+  exhibitCenterMm,
+  mountRole,
+} from './clamp.js';
+import { CLAMP, mountRole } from './clamp.js';
 export const MODULES = {
   panel: {
     name: '平面展陈',
@@ -364,6 +376,8 @@ const item = (id, type, gx, gy, state = 0, gz = 0) => ({
   color: '#3158e8',
   intensity: 65,
   temperature: 3200,
+  // 展板厚度（机械层参数，毫米）：旧数据缺省按 Rhino 参考厚度 6 mm。
+  exhibitMm: CLAMP.referenceExhibitMm,
 });
 // 梯柱列：所有预设共享的四根基底轨条（id 保持一致，切换场景时视为固定设施）。
 // 布局与参考视频一致：两组挂接区域、柱距 15 格（720 mm，视频标注“柱距 714 mm”）。
@@ -625,6 +639,8 @@ export function mountPoints(a, items) {
     gx: p.gx,
     gy: p.gy,
     gz: pillars.find((q) => q.gx === p.gx).gz,
+    // 机械层角色：底行承托、顶行限位；与 clamp.js 的 mountRole 同规则。
+    role: mountRole(p.gy, a.gy, a.gy + h - 1),
   }));
 }
 
@@ -646,16 +662,19 @@ export function mounted(a, items) {
 }
 
 // 几何缓存必须包括相对挂点：模块平移时，节点仍应留在真实梯柱列上。
+// 展板厚度驱动滑块行程，必须纳入缓存键，否则变厚度不触发重建。
 export function mountingKey(a, items) {
-  return JSON.stringify(
-    mountPoints(a, items).map((p) => [
+  return JSON.stringify({
+    thicknessMm: a.exhibitMm ?? CLAMP.referenceExhibitMm,
+    points: mountPoints(a, items).map((p) => [
       p.pillar_id,
       p.gx - a.gx,
       p.gy - a.gy,
       p.gz - a.gz,
+      p.role,
       items.find((b) => b.type === 'block' && b.id === a.parentId && nodeAtPoint(b, p))?.id,
     ]),
-  );
+  });
 }
 // 拓展模块的横向归位：所在跨度内含梯柱则保持原位；否则平移到最近梯柱的边缘，
 // 使模块始终挂接在梯柱上（节点由 mountPoints 派生，随模块随动）。
