@@ -75,9 +75,9 @@ for (const item of ctx.items) {
   assert.equal(group.userData.type, item.type);
   let meshes = 0;
   group.traverse((object) => {
-    if (object.isMesh) {
+    if (object.isMesh || object.isLine) {
       meshes++;
-      assert.equal(object.userData.itemId, item.id);
+      if (object.isMesh) assert.equal(object.userData.itemId, item.id);
     }
   });
   assert.ok(meshes > 0, item.type);
@@ -152,6 +152,39 @@ cleanup.forEach((fn) => fn());
 added = null;
 assert.equal(drop().defaultPrevented, false);
 assert.equal(added, null);
+// 正视图的深度拖动必须改变尺寸，不能用固定 Z 平面上恒为零的差值。
+ctx.resizeHandles = new THREE.Group();
+const depthHandle = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2));
+depthHandle.position.set(0, 1, 0);
+depthHandle.userData.resizeHandle = { id: 'panel', axis: 'z' };
+ctx.resizeHandles.add(depthHandle);
+ctx.resizeHandles.updateMatrixWorld(true);
+ctx.renderer.domElement.setPointerCapture = () => {};
+let resized = null;
+let committed = false;
+cleanup.length = 0;
+setupPointer(ctx, {
+  select() {},
+  resizeItem(id, size, commit) {
+    resized = { id, size, commit };
+    return true;
+  },
+  changed() {
+    committed = true;
+  },
+});
+for (const [type, y] of [
+  ['pointerdown', 100],
+  ['pointermove', 76],
+  ['pointerup', 76],
+]) {
+  const event = new Event(type);
+  Object.assign(event, { button: 0, pointerId: 1, clientX: 100, clientY: y });
+  ctx.renderer.domElement.dispatchEvent(event);
+}
+assert.deepEqual(resized, { id: 'panel', size: [15, 12, 3], commit: false });
+assert.equal(committed, true, '一次拖动在释放时提交');
+cleanup.forEach((fn) => fn());
 let sharedDisposed = false;
 ctx.materials.shared.silver.addEventListener('dispose', () => {
   sharedDisposed = true;

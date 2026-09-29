@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createPlannerStore } from '../src/store/index.js';
-import { PRESETS, clone, prepareLayout } from '../src/model/index.js';
+import { PRESETS, clone, prepareLayout, mounted } from '../src/model/index.js';
 const s = createPlannerStore();
 let notifications = 0;
 const off = s.subscribe(() => notifications++);
@@ -91,32 +91,55 @@ try {
   s.setPreset(0);
   assert.equal(s.getSnapshot().exhibition, 3);
   const h = createPlannerStore();
-  const pillar = h.addItem('pillar', 0, 0, 0, null, true);
-  const node = h.addItem('block', 1, 4, 0, null, true);
-  assert.equal(node.gx, 0, '节点放置时吸附到新梯柱列');
-  assert.equal(node.parentId, pillar.id);
-  const extension = h.addItem('panel', 8, 4, 0, null, true);
+  const original = clone(h.getSnapshot().items);
+  const node = h.addItem('block', 3, 4, 0, null, true);
+  assert.equal(node.parentId, 'p1');
+  assert.deepEqual(
+    h.getSnapshot().items.slice(0, original.length),
+    original,
+    '新增节点不改变已有模块的位置和父级',
+  );
+  const extension = h.addItem('panel', 3, 4, 0, null, true);
   assert.equal(extension.parentId, node.id);
+  const panel2 = h.addItem('panel', 33, 4, 0, null, true);
+  assert.equal(panel2.parentId, 'p3', '远处拓展不能绑到不相接的节点');
   const before = h.getSnapshot().items.map((a) => ({ id: a.id, gx: a.gx, gy: a.gy }));
-  assert.equal(h.moveItem(pillar.id, { gx: 2 }), true);
+  assert.equal(h.moveItem('p1', { gx: 4 }), false, '移动梯柱若导致上方模块碰撞，则整组拒绝移动');
+  h.remove('a');
+  assert.equal(h.moveItem('p1', { gx: 4 }), true);
   for (const a of h.getSnapshot().items.filter((x) => [node.id, extension.id].includes(x.id))) {
     const old = before.find((x) => x.id === a.id);
-    assert.equal(a.gx, old.gx + 2);
+    assert.equal(a.gx, old.gx + 1);
   }
+  assert.equal(h.getSnapshot().items.find((a) => a.id === panel2.id).gx, panel2.gx);
   assert.equal(h.resizeItem(extension.id, [16, 12, 1]), true);
-  assert.deepEqual(h.exportData().modules.find((a) => a.id === extension.id).size_cells, [16, 12, 1]);
-  const panel2 = h.addItem('panel', 40, 4, 0, null, true);
-  assert.equal(
-    h.getSnapshot().items.find((a) => a.id === panel2.id).parentId,
-    node.id,
-    '拓展优先挂到节点',
+  assert.deepEqual(
+    h.exportData().modules.find((a) => a.id === extension.id).size_cells,
+    [16, 12, 1],
   );
-  const before2 = h.getSnapshot().items.map((a) => ({ id: a.id, gx: a.gx }));
-  assert.equal(h.moveItem(pillar.id, { gx: 4 }), true);
-  for (const a of h.getSnapshot().items.filter((x) => [node.id, extension.id, panel2.id].includes(x.id))) {
-    const old = before2.find((x) => x.id === a.id);
-    assert.equal(a.gx, old.gx + 2, '移动梯柱时节点与拓展整体跟随');
-  }
+  assert.equal(h.moveItem(node.id, { gy: 5 }), true, '移动节点带动实际挂接的拓展');
+  assert.equal(h.getSnapshot().items.find((a) => a.id === extension.id).gy, 5);
+  const safe = clone(h.getSnapshot().items);
+  assert.equal(h.moveItem(node.id, { gy: 48 }), false, '节点不能超出梯柱顶部');
+  assert.equal(h.moveItem(extension.id, { gz: 8 }), false, '拓展不能悬空离墙');
+  assert.equal(h.resizeItem('p1', [1, 10, 1]), false, '缩短梯柱不能使已挂模块脱落');
+  assert.equal(h.remove('p1'), false, '删除支撑前必须处理依赖');
+  assert.equal(h.addItem('block', 12, 52, 0, null, true), undefined);
+  assert.deepEqual(h.getSnapshot().items, safe, '无效操作不改变任何构件');
+  assert.ok(safe.every((a) => mounted(a, safe)));
+  const count = h.getSnapshot().items.length;
+  h.select(null);
+  h.addItem('block', 4, 1, 0, null, true);
+  assert.equal(h.getSnapshot().items.length, count + 1, '添加一个只增加一个');
+  h.setExhibition(1);
+  h.toggleState('v1');
+  assert.equal(h.resizeItem('v1', [14, 11, 20]), true);
+  assert.equal(h.resizeItem('v1', [14, 11, 20]), true);
+  assert.equal(
+    h.exportData().modules.find((a) => a.id === 'v1').size_cells[2],
+    20,
+    '打开的柜门反复调尺寸不会重复增加活动包络',
+  );
   h.destroy();
   console.log(
     'React store: immutable snapshots, add/duplicate/remove, movement/collision, presets, states, export and autoplay passed.',

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MODULES as M, ORIGIN, PITCH, valid, conflict } from '../model/index.js';
+import { MODULES as M, ORIGIN, PITCH } from '../model/index.js';
 import { cells } from '../model/index.js';
 
 export function setupPointer(ctx, store) {
@@ -21,7 +21,10 @@ export function setupPointer(ctx, store) {
   listen(canvas, 'pointerdown', (e) => {
     if (e.button !== 0) return;
     get(e);
-    const handleHit = ray.intersectObjects(ctx.resizeHandles ? [...ctx.resizeHandles.children] : [], false)[0];
+    const handleHit = ray.intersectObjects(
+      ctx.resizeHandles ? [...ctx.resizeHandles.children] : [],
+      false,
+    )[0];
     if (handleHit?.object.userData.resizeHandle) {
       const { id, axis } = handleHit.object.userData.resizeHandle;
       const a = ctx.items.find((x) => x.id === id);
@@ -30,7 +33,30 @@ export function setupPointer(ctx, store) {
       plane.constant = -a.gz * PITCH;
       const start = point(e);
       if (!start) return;
-      drag = { kind: 'resize', id, axis, start, a: { ...a, sizeCells: cells(a) }, px: e.clientX, py: e.clientY, moved: false, blocked: false };
+      drag = {
+        kind: 'resize',
+        id,
+        axis,
+        start,
+        a: { ...a, sizeCells: cells(a) },
+        px: e.clientX,
+        py: e.clientY,
+        moved: false,
+        blocked: false,
+      };
+      if (axis === 'z') {
+        const origin = handleHit.object.position.clone().project(ctx.camera);
+        const end = handleHit.object.position.clone();
+        end.z += PITCH;
+        end.project(ctx.camera);
+        const rect = canvas.getBoundingClientRect();
+        drag.depthAxis = [
+          ((end.x - origin.x) * rect.width) / 2,
+          (-(end.y - origin.y) * rect.height) / 2,
+        ];
+        // 正视图的深度轴投影为点，改用向上拖动增加深度。
+        if (Math.hypot(...drag.depthAxis) < 2) drag.depthAxis = [0, -12];
+      }
       ctx.orbit.enabled = false;
       canvas.setPointerCapture(e.pointerId);
       return;
@@ -64,26 +90,31 @@ export function setupPointer(ctx, store) {
     if (resize) {
       const next = [...drag.a.sizeCells];
       const index = { x: 0, y: 1, z: 2 }[drag.axis];
-      const delta = drag.axis === 'x' ? Math.round((p.x - drag.start.x) / PITCH) : drag.axis === 'y' ? Math.round((p.y - drag.start.y) / PITCH) : Math.round((p.z - drag.start.z) / PITCH);
+      let delta;
+      if (drag.axis === 'z') {
+        const [dx, dy] = drag.depthAxis;
+        delta = Math.round(
+          ((e.clientX - drag.px) * dx + (e.clientY - drag.py) * dy) / (dx * dx + dy * dy),
+        );
+      } else {
+        delta = Math.round((p[drag.axis] - drag.start[drag.axis]) / PITCH);
+      }
       next[index] = Math.max(1, drag.a.sizeCells[index] + delta);
-      const test = { ...a, sizeCells: next };
-      drag.blocked = !valid(test) || !!conflict(test, ctx.items);
+      drag.blocked = !store.resizeItem(a.id, next, false);
       ctx.selectionBox.material.color.set(drag.blocked ? '#e25743' : '#3158e8');
       if (!drag.blocked) {
-        store.resizeItem(a.id, next);
         drag.moved = true;
       }
       return;
     }
     const test = {
-        ...a,
-        gx: drag.a.gx + Math.round((p.x - drag.start.x) / PITCH),
-        gy: drag.a.gy + Math.round((p.y - drag.start.y) / PITCH),
-      };
-    drag.blocked = !valid(test) || !!conflict(test, ctx.items);
+      ...a,
+      gx: drag.a.gx + Math.round((p.x - drag.start.x) / PITCH),
+      gy: drag.a.gy + Math.round((p.y - drag.start.y) / PITCH),
+    };
+    drag.blocked = !store.moveItem(a.id, { gx: test.gx, gy: test.gy }, false);
     ctx.selectionBox.material.color.set(drag.blocked ? '#e25743' : '#3158e8');
     if (!drag.blocked) {
-      store.moveItem(a.id, { gx: test.gx, gy: test.gy }, false);
       drag.moved = true;
     }
   });
@@ -97,7 +128,7 @@ export function setupPointer(ctx, store) {
         if (a) store.moveItem(a.id, { gx: a.gx, gy: a.gy, gz: a.gz }, true);
       }
     }
-    if (drag?.blocked) store.toast('该位置超界或重叠，保留上一个可用格位');
+    if (drag?.blocked) store.toast('该位置无法挂接、超界或重叠，保留上一个可用格位');
     drag = null;
     ctx.orbit.enabled = true;
     ctx.selectionBox.material.color.set('#3158e8');

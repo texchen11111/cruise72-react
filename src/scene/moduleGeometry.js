@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MODULES as M, PITCH, mountPoints, position, cells } from '../model/index.js';
+import { MODULES as M, PITCH, mountPoints, mountingKey, position, cells } from '../model/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
 import { buildSurface } from './models/surfaces.js';
@@ -7,9 +7,10 @@ import { buildSurface } from './models/surfaces.js';
 export function createModuleBuilder(ctx) {
   const { mat, textTexture, shared } = ctx.materials;
   const { silver, orange, dark, white, glass } = shared;
-  function node(g, x, y, co, z = 0.024) {
+  function node(g, x, y, co, z = 0.024, point = null) {
     const b = mat(co);
-    cube(g, 0.048, 0.048, 0.048, x, y, z, b);
+    const body = cube(g, 0.048, 0.048, 0.048, x, y, z, b);
+    if (point) body.userData.mountPoint = point;
     cube(g, 0.016, 0.004, 0.001, x, y, z + 0.0235, silver);
   }
 
@@ -18,13 +19,14 @@ export function createModuleBuilder(ctx) {
     const m = M[a.type],
       g = new THREE.Group(),
       colored = mat(a.color),
-      [w, h, d] = cells(a).map((v) => v * 0.048);
+      [w, h, d] = (a.sizeCells || m.cells).map((v) => v * PITCH);
     g.userData.id = a.id;
     g.position.set(...position(a));
     let act = null;
     if (a.type === 'pillar') buildRhinoPillar(g, w, h, d, silver, dark);
     else if (a.type === 'block') buildRhinoNode(g, w, h, d, silver, orange, dark);
-    else if (['pegboard', 'mesh', 'metal', 'rope'].includes(a.type)) buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange });
+    else if (['pegboard', 'mesh', 'metal', 'rope'].includes(a.type))
+      buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange });
     else if (a.type === 'panel' || a.type === 'acoustic' || a.type === 'sign') {
       const depth = a.type === 'panel' ? 0.006 : 0.025;
       cube(g, w, h, depth, 0, 0, 0.025, a.type === 'acoustic' ? mat('#829f9e') : white);
@@ -158,26 +160,54 @@ export function createModuleBuilder(ctx) {
       g.add(act);
     }
     if (a.type !== 'block' && m.mount) {
-      // 概念节点由父子关系派生，必须落在梯柱列上；没有梯柱时（如目录缩略图）回退到四角示意。
+      // 主场景只画有效挂点；独立目录缩略图才使用四角示意。
       const pts = mountPoints(a, ctx.items || []);
       if (pts.length) {
         const [w, h] = cells(a);
         const cx = a.gx + w / 2,
-          cy = a.gy + h / 2,
-          z = Math.max(0.002, 0.05 - a.gz * PITCH);
-        for (const p of pts) node(g, (p.gx + 0.5 - cx) * PITCH, (p.gy + 0.5 - cy) * PITCH, a.color, z);
+          cy = a.gy + h / 2;
+        for (const p of pts) {
+          const realNode = ctx.items.find(
+            (b) =>
+              b.id === a.parentId &&
+              b.type === 'block' &&
+              b.gx === p.gx &&
+              b.gy === p.gy &&
+              b.gz === p.gz,
+          );
+          if (!realNode)
+            node(
+              g,
+              (p.gx + 0.5 - cx) * PITCH,
+              (p.gy + 0.5 - cy) * PITCH,
+              a.color,
+              (p.gz - a.gz) * PITCH + 0.024,
+              p,
+            );
+        }
+        const z = (pts[0].gz - a.gz) * PITCH + 0.024;
         const cols = [...new Set(pts.map((p) => p.gx))];
         if (m.mount === 4 && cols.length >= 2) {
           const x1 = (cols[0] + 0.5 - cx) * PITCH,
             x2 = (cols[cols.length - 1] + 0.5 - cx) * PITCH;
           for (const gy of new Set(pts.map((p) => p.gy)))
-            cube(g, x2 - x1, 0.012, 0.012, (x1 + x2) / 2, (gy + 0.5 - cy) * PITCH, z - 0.006, silver);
+            cube(
+              g,
+              x2 - x1,
+              0.012,
+              0.012,
+              (x1 + x2) / 2,
+              (gy + 0.5 - cy) * PITCH,
+              z - 0.006,
+              silver,
+            );
         }
-      } else {
+      } else if (ctx.preview && !ctx.items.some((item) => item.type === 'pillar')) {
         const xs = m.mount === 4 || a.type === 'rail' ? [-w / 2 + 0.024, w / 2 - 0.024] : [0];
         const ys = a.type === 'rail' ? [0] : [-h / 2 + 0.024, h / 2 - 0.024];
         for (const x of xs) for (const y of ys) node(g, x, y, a.color);
-        if (m.mount === 4) for (const y of ys) cube(g, w - 0.048, 0.012, 0.012, 0, y, 0.018, silver);
+        if (m.mount === 4)
+          for (const y of ys) cube(g, w - 0.048, 0.012, 0.012, 0, y, 0.018, silver);
       }
     }
     g.userData.act = act;
@@ -192,6 +222,7 @@ export function createModuleBuilder(ctx) {
     g.userData.type = a.type;
     g.userData.color = a.color;
     g.userData.sizeKey = cells(a).join('x');
+    g.userData.mountingKey = mountingKey(a, ctx.items || []);
     ctx.models.set(a.id, g);
     return g;
   }

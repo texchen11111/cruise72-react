@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { JSDOM } from 'jsdom';
 import { createPlannerStore } from '../src/store/index.js';
+import { mountPoints, ORIGIN, PITCH } from '../src/model/index.js';
 
 // Run the real scene/environment orchestration; replace only GPU operations.
 const dom = new JSDOM('<!doctype html><div id="stage"></div>');
@@ -25,8 +26,12 @@ globalThis.requestAnimationFrame = (fn) => {
 globalThis.cancelAnimationFrame = (id) => frames.delete(id);
 let observing = false;
 globalThis.ResizeObserver = class {
-  observe() { observing = true; }
-  disconnect() { observing = false; }
+  observe() {
+    observing = true;
+  }
+  disconnect() {
+    observing = false;
+  }
 };
 
 const result = await build({
@@ -34,23 +39,28 @@ const result = await build({
   bundle: true,
   format: 'esm',
   write: false,
-  plugins: [{
-    name: 'gpu-boundary',
-    setup(build) {
-      build.onResolve({ filter: /^three$/ }, () => ({ path: 'three', namespace: 'gpu' }));
-      build.onResolve({ filter: /^three\/addons\/OrbitControls\.js$/ }, () => ({
-        path: 'orbit', namespace: 'gpu',
-      }));
-      build.onLoad({ filter: /.*/, namespace: 'gpu' }, ({ path }) => ({
-        resolveDir: process.cwd(),
-        contents: path === 'orbit' ? `
+  plugins: [
+    {
+      name: 'gpu-boundary',
+      setup(build) {
+        build.onResolve({ filter: /^three$/ }, () => ({ path: 'three', namespace: 'gpu' }));
+        build.onResolve({ filter: /^three\/addons\/OrbitControls\.js$/ }, () => ({
+          path: 'orbit',
+          namespace: 'gpu',
+        }));
+        build.onLoad({ filter: /.*/, namespace: 'gpu' }, ({ path }) => ({
+          resolveDir: process.cwd(),
+          contents:
+            path === 'orbit'
+              ? `
           import { Vector3 } from './vendor/three.module.js';
           export class OrbitControls {
             target = new Vector3();
             update() {}
             dispose() {}
           }
-        ` : `
+        `
+              : `
           export * from './vendor/three.module.js';
           import { Texture } from './vendor/three.module.js';
           export class WebGLRenderer {
@@ -71,9 +81,10 @@ const result = await build({
             dispose() {}
           }
         `,
-      }));
+        }));
+      },
     },
-  }],
+  ],
 });
 const { createPlannerScene, generatePreview } = await import(
   'data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64')
@@ -102,7 +113,41 @@ const handles = () => {
   });
   return found;
 };
-assert.deepEqual(handles().map((h) => h.userData.resizeHandle.axis), ['x', 'y', 'z']);
+assert.deepEqual(
+  handles().map((h) => h.userData.resizeHandle.axis),
+  ['x', 'y', 'z'],
+);
+// 检查实际 Three.js 节点世界坐标，不能只验证导出的坐标正确。
+const assertMountGeometry = () => {
+  renderer.scene.updateMatrixWorld(true);
+  const bodies = [];
+  renderer.scene.traverse((object) => {
+    if (object.userData.mountPoint) bodies.push(object);
+  });
+  const data = store.getSnapshot().items;
+  const expected = data.flatMap((a) => mountPoints(a, data));
+  assert.equal(bodies.length, expected.length, '移动与重建不累积重复节点');
+  for (const object of bodies) {
+    const point = expected.find((p) => p.id === object.userData.mountPoint.id);
+    assert.ok(point);
+    const world = object.getWorldPosition(object.position.clone());
+    assert.ok(Math.abs(world.x - ORIGIN[0] - (point.gx + 0.5) * PITCH) < 1e-9);
+    assert.ok(Math.abs(world.y - ORIGIN[1] - (point.gy + 0.5) * PITCH) < 1e-9);
+    assert.ok(Math.abs(world.z - (point.gz * PITCH + 0.024)) < 1e-9);
+  }
+};
+assertMountGeometry();
+assert.equal(store.moveItem('a', { gy: 4 }), true);
+for (let i = 0; i < 4; i++) {
+  assert.equal(store.moveItem('a', { gx: i % 2 ? 3 : 4 }), true);
+  assertMountGeometry();
+}
+assert.equal(store.resizeItem('a', [16, 12, 1]), true);
+assertMountGeometry();
+store.setExhibition(2);
+// 完成切换动画后再核验，旧模型应退出场景。
+for (let i = 0; i < 150; i++) frames.get(1)();
+assertMountGeometry();
 store.setView('front');
 engine.resetView();
 assert.match(engine.snapshot(), /^data:image\/png/);

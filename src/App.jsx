@@ -81,7 +81,7 @@ export default function App({ store }) {
           <a className="gallery-nav" href="#scene-gallery">
             场景图册
           </a>
-          <span className="pill">V4.4 · 场景优先版</span>
+          <span className="pill">V4.8 · 挂接修复版</span>
           <a href="https://cruise72-react.2161598874.workers.dev/" target="_blank" rel="noopener">
             项目网站 ↗
           </a>

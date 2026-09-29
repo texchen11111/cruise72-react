@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ORIGIN, PITCH, envelope, position, cells } from '../model/index.js';
+import { ORIGIN, PITCH, envelope, position, cells, mountingKey } from '../model/index.js';
 import { createMaterials } from './materials.js';
 import { createModuleBuilder } from './moduleGeometry.js';
 import { createEnvironment } from './environment.js';
@@ -19,6 +19,7 @@ export function createPlannerScene(stage, store, options = {}) {
     exiting: [],
     materials: createMaterials(),
     resizeHandles: new THREE.Group(),
+    preview: !!options.preview,
   };
   let frame = 0,
     observer = null,
@@ -96,7 +97,12 @@ export function createPlannerScene(stage, store, options = {}) {
       } else {
         const nextPosition = position(a);
         g.position.set(...nextPosition);
-        if (g.userData.color !== a.color || g.userData.sizeKey !== cells(a).join('x')) rebuild(a);
+        if (
+          g.userData.color !== a.color ||
+          g.userData.sizeKey !== cells(a).join('x') ||
+          g.userData.mountingKey !== mountingKey(a, ctx.items)
+        )
+          rebuild(a);
         if (switching) ctx.models.get(a.id).userData.transition = true;
       }
     }

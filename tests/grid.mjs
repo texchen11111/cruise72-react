@@ -13,6 +13,7 @@ import {
   snapExtension,
   mountPoints,
   prepareLayout,
+  mounted,
 } from '../src/model/index.js';
 let checks = 0;
 const ok = (v, m) => {
@@ -83,10 +84,22 @@ ok(
   pts.every((q) => [3, 18].includes(q.gx)) && new Set(pts.map((q) => q.gx)).size === 2,
   'corner points sit on both spanned pillar columns',
 );
-ok(pts.every((q) => q.gy === 10 || q.gy === 21), 'corner rows at module edges');
-ok(pts.every((q) => q.pillar_id), 'points reference their pillar');
-const lp = mountPoints({ id: 'l', type: 'lamp', gx: 8, gy: 20, gz: 1, state: 0 }, allP);
+ok(
+  pts.every((q) => q.gy === 10 || q.gy === 21),
+  'corner rows at module edges',
+);
+ok(
+  pts.every((q) => q.pillar_id),
+  'points reference their pillar',
+);
+const floatingLamp = { id: 'l', type: 'lamp', gx: 8, gy: 20, gz: 1, state: 0 };
+ok(mountPoints(floatingLamp, allP).length === 0, 'no remote phantom nodes');
+const lp = mountPoints(snapExtension(floatingLamp, allP), allP);
 ok(lp.length === 2 && lp.every((q) => q.gx === 3), 'gz=1 module still mounts on a pillar column');
+ok(
+  mountPoints({ id: 'r', type: 'rail', gx: 3, gy: 5, gz: 0, state: 0 }, allP).length === 2,
+  'crossbar really derives two nodes',
+);
 ok(
   mountPoints({ id: 'r', type: 'rail', gx: 3, gy: 5, gz: 0, state: 0 }, allP).every(
     (q) => q.gx === 3 || q.gx === 18,
@@ -117,6 +130,20 @@ for (const p of [...PRESETS, ...EXHIBITIONS]) {
   );
   const laid = prepareLayout(p.items);
   ok(
+    laid.every((a) => mounted(a, laid)),
+    p.id + ' all assemblies have usable supports',
+  );
+  for (const a of laid) {
+    for (const point of mountPoints(a, laid)) {
+      const pillar = laid.find((b) => b.id === point.pillar_id);
+      ok(
+        point.gy >= pillar.gy && point.gy < pillar.gy + cells(pillar)[1],
+        p.id + ' mount within pillar height',
+      );
+      ok(point.gz === pillar.gz, p.id + ' mount uses its own pillar depth');
+    }
+  }
+  ok(
     laid.every((a) => valid(a) && !conflict(a, laid)),
     p.id + ' prepared layout stays valid',
   );
@@ -125,7 +152,10 @@ for (const p of [...PRESETS, ...EXHIBITIONS]) {
     extensions.every((a) => mountPoints(a, laid).length === M[a.type].mount),
     p.id + ' extensions fully mounted on pillars',
   );
-  ok(extensions.every((a) => !!a.parentId), p.id + ' extensions have a parent');
+  ok(
+    extensions.every((a) => !!a.parentId),
+    p.id + ' extensions have a parent',
+  );
   ok(
     extensions.every((a) => laid.some((q) => q.id === a.parentId && M[q.type].family !== '拓展')),
     p.id + ' extension parents are ladder or nodes',

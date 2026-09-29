@@ -9,7 +9,6 @@ import {
   valid,
   clampPosition,
   conflict,
-  findSpace,
   normalizeParents,
   prepareLayout,
   childrenOf,
@@ -17,6 +16,7 @@ import {
   snapToPillar,
   snapExtension,
   mountPoints,
+  mounted,
 } from '../model/index.js';
 
 // React reads immutable snapshots through useSyncExternalStore. Three.js consumes
@@ -70,17 +70,28 @@ export function createPlannerStore() {
   function moveItem(id, patch, commit = true) {
     const a = state.items.find((x) => x.id === id);
     if (!a) return false;
-    const positionPatch = Object.fromEntries(Object.entries(patch).filter(([k]) => ['gx', 'gy', 'gz'].includes(k)));
+    const positionPatch = Object.fromEntries(
+      Object.entries(patch).filter(([k]) => ['gx', 'gy', 'gz'].includes(k)),
+    );
     const hasSize = patch.sizeCells !== undefined;
     if (Object.values(positionPatch).some((v) => !Number.isFinite(Number(v)))) {
       if (commit) toast('请输入有效格坐标');
       return false;
     }
-    if (hasSize && (!Array.isArray(patch.sizeCells) || patch.sizeCells.length !== 3 || patch.sizeCells.some((v) => !Number.isFinite(Number(v)) || Number(v) < 1))) {
+    if (
+      hasSize &&
+      (!Array.isArray(patch.sizeCells) ||
+        patch.sizeCells.length !== 3 ||
+        patch.sizeCells.some((v) => !Number.isFinite(Number(v)) || Number(v) < 1))
+    ) {
       if (commit) toast('尺寸必须是正整数格');
       return false;
     }
-    let next = { ...a, ...patch, sizeCells: hasSize ? patch.sizeCells.map((v) => Math.round(Number(v))) : a.sizeCells };
+    let next = {
+      ...a,
+      ...patch,
+      sizeCells: hasSize ? patch.sizeCells.map((v) => Math.round(Number(v))) : a.sizeCells,
+    };
     for (const k of ['gx', 'gy', 'gz']) next[k] = Math.round(next[k]);
     // 节点基于梯柱移动：横向格位吸附到最近的梯柱列；拓展移动时归位到梯柱挂接范围。
     // 尺寸调整只重算派生挂接点，不改变模块位置，避免缩放时模块跳位。
@@ -90,16 +101,31 @@ export function createPlannerStore() {
     const moving = childrenOf(id, state.items);
     const delta = ['gx', 'gy', 'gz'].map((k) => next[k] - a[k]);
     const subtree = state.items.filter((x) => moving.has(x.id));
-    const moved = subtree.map((x) => ({ ...x, gx: x.gx + delta[0], gy: x.gy + delta[1], gz: x.gz + delta[2] }));
+    const moved = subtree.map((x) => ({
+      ...x,
+      gx: x.gx + delta[0],
+      gy: x.gy + delta[1],
+      gz: x.gz + delta[2],
+    }));
     const candidate = hasSize ? moved.map((x) => (x.id === id ? next : x)) : moved;
     const others = state.items.filter((x) => !moving.has(x.id));
-    if (candidate.some((x) => !valid(x) || conflict(x, others) || candidate.some((y) => y.id !== x.id && conflict(x, [y])))) {
+    if (
+      candidate.some(
+        (x) =>
+          !valid(x) ||
+          conflict(x, others) ||
+          candidate.some((y) => y.id !== x.id && conflict(x, [y])),
+      )
+    ) {
       if (commit) toast('超出网格或占位重叠：请换一个位置');
       return false;
     }
     const byId = new Map(candidate.map((x) => [x.id, x]));
-    // 提交时重新归一父子关系：拓展挂到最近的节点，节点挂到最近的梯柱。
-    const items = commit ? normalizeParents(state.items.map((x) => byId.get(x.id) || x)) : state.items.map((x) => byId.get(x.id) || x);
+    const items = normalizeParents(state.items.map((x) => byId.get(x.id) || x));
+    if (items.some((x) => !mounted(x, items) || conflict(x, items))) {
+      if (commit) toast('挂接点必须落在梯柱范围内；请调整位置或尺寸');
+      return false;
+    }
     update({ items });
     if (commit) changed();
     return true;
@@ -118,27 +144,41 @@ export function createPlannerStore() {
       intensity: from?.intensity || 65,
       temperature: from?.temperature || 3200,
     });
-    const free = exact
-      ? !conflict(candidate, state.items)
-        ? candidate
-        : null
-      : findSpace(type, state.items, gx, gy, gz, from || {});
-    if (!free) {
-      toast('此层没有可用位置，请调整坐标或移除模块');
-      return;
-    }
-    // 节点放置时吸附到最近的梯柱列；吸附后与现有模块冲突则退回原自由位。
-    const snapped = snapToPillar(free, state.items);
-    const placed = valid(snapped) && !conflict(snapped, state.items) ? snapped : free;
     const selected = state.items.find((x) => x.id === state.selected);
     const wanted = parentFamily(type);
     const parent = wanted && selected && M[selected.type]?.family === wanted ? selected : null;
-    let a = { ...placed, id: 'u' + uid++ };
-    // 拓展放置时归位到最近梯柱的边缘；归位后重叠则退回原自由位。
-    const attached = snapExtension(a, state.items);
-    if (attached.gx !== a.gx && valid(attached) && !conflict(attached, state.items)) a = attached;
-    if (parent) a.parentId = parent.id;
-    update({ items: normalizeParents([...state.items, a]), selected: a.id, rightTab: 'detail' });
+    const place = (position) => {
+      const snapped = snapExtension(snapToPillar(position, state.items), state.items);
+      const proposed = { ...snapped, id: 'u' + uid, parentId: parent?.id };
+      const items = normalizeParents([...state.items, proposed]);
+      const a = items[items.length - 1];
+      return valid(a) && mounted(a, items) && !conflict(a, items) ? { a, items } : null;
+    };
+    let placed = place(candidate);
+    // 每个候选位置都先吸附再校验，不能在失败后退回悬空位置。
+    if (!placed && !exact) {
+      const positions = [];
+      for (let x = 0; x < GRID[0]; x++) {
+        for (let y = 0; y < GRID[1]; y++) {
+          positions.push({ ...candidate, gx: x, gy: y });
+        }
+      }
+      positions.sort(
+        (a, b) =>
+          Math.abs(a.gx - gx) + Math.abs(a.gy - gy) - Math.abs(b.gx - gx) - Math.abs(b.gy - gy),
+      );
+      for (const position of positions) {
+        placed = place(position);
+        if (placed) break;
+      }
+    }
+    if (!placed) {
+      toast('没有可用挂接位置：请检查梯柱高度、跨度和模块占位');
+      return;
+    }
+    const { a, items } = placed;
+    uid++;
+    update({ items, selected: a.id, rightTab: 'detail' });
     changed();
     toast('已添加' + M[type].name + ' · ' + M[type].cells.join(' × ') + ' 格');
     return a;
@@ -172,8 +212,12 @@ export function createPlannerStore() {
     update({ items: state.items.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
     changed();
   }
-  function resizeItem(id, sizeCells) {
-    return moveItem(id, { sizeCells }, true);
+  function resizeItem(id, sizeCells, commit = true) {
+    const a = state.items.find((x) => x.id === id);
+    const base = [...sizeCells];
+    // 输入和拖动显示活动包络，储存时扣除柜门预留，避免反复增加 14 格。
+    if (a?.type === 'cabinet' && a.state) base[2] -= 14;
+    return moveItem(id, { sizeCells: base }, commit);
   }
   function toggleState(id) {
     const a = state.items.find((x) => x.id === id);
@@ -190,8 +234,14 @@ export function createPlannerStore() {
     patchItem(id, { state: next.state });
   }
   function remove(id) {
-    update({ items: state.items.filter((a) => a.id !== id).map((a) => (a.parentId === id ? { ...a, parentId: null } : a)), selected: null });
+    const items = normalizeParents(state.items.filter((a) => a.id !== id));
+    if (items.some((a) => !mounted(a, items))) {
+      toast('这根梯柱仍有挂接模块，请先移动或移除相关模块');
+      return false;
+    }
+    update({ items, selected: null });
     changed();
+    return true;
   }
   function duplicate(id) {
     const a = state.items.find((x) => x.id === id);
