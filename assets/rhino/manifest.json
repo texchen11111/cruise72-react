@@ -1,6 +1,6 @@
 {
   "sourceFile": "梯柱 节点.3dm",
-  "sourcePath": "models/rhino/source/ladder-node.3dm",
+  "sourcePath": "assets/rhino/source/ladder-node.3dm",
   "sourceSha256": "0db9c004332097d70500ee5b60928ba23aba959595377c2b305ed672b9d91f0e",
   "method": "saved Rhino render meshes, no remodelling, no hardware scaling",
   "units": "mm",
