@@ -99,7 +99,7 @@ npm run build
 | --- | --- |
 | 页面和面板 | `src/components/`、`src/App.jsx` |
 | React 状态订阅 | `src/hooks/usePlanner.js` |
-| 模块资料和场景预设 | `src/core/modules.js`、`src/core/presets.js` |
+| 模块资料和场景预设 | `src/core/modules.js`、`src/core/scenes.js` |
 | 网格、碰撞 | `src/core/grid.js` |
 | 挂接、横档吸附和夹持机械 | `src/core/mount/`（`mounting.js`、`rungs.js`、`clamp.js`） |
 | 装配物料清单 | `src/core/assembly.js` |

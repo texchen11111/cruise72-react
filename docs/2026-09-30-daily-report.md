@@ -86,7 +86,7 @@ store      状态骨架 + 动作（moveItem/addItem/…）
 ### 3.4 决策记录（命名讨论）
 
 - **目录名 `mount/`**：在 `detail/`（与详情页撞义）、`behavior`（行为是 store 动作的属性，会抹掉刚立起的纯/脏边界）等候选中，选与全库 `mountPoints`/`mounted`/`mountingKey` 词根一致的 `mount`
-- **`presets.js` 保留未改名**：文件除 PRESETS 外还含 EXHIBITIONS、`item()`、`PILLAR_COLUMNS`，叫 `presets` 只覆盖约三分之二内容，候选 `scenes.js`/`layouts.js` 更准确——但考虑到改名要动 git 历史且收益有限，**维持现状，列为未决项**
+- **`presets.js` 命名**：文件除 PRESETS 外还含 EXHIBITIONS、`item()`、`PILLAR_COLUMNS`，叫 `presets` 只覆盖约三分之二内容；当日收尾时已改名 `scenes.js`（见 V4.12 补充），导出名不变、外部零感知
 - **历史版本记录不改写**：VERSION_HISTORY 中 5 处旧路径均为历史条目，描述的是当时事实
 
 ### 3.5 零行为变更保障
@@ -113,7 +113,6 @@ store      状态骨架 + 动作（moveItem/addItem/…）
 
 ## 未决项与观察
 
-1. **VERSION_HISTORY 缺口**：`946afe6` 的工作区 UI 改版（约 1300 行）无版本条目，建议补记为 V4.8–V4.10 之一
-2. **`presets.js` 命名**：更准确的候选是 `scenes.js`/`layouts.js`，待拍板
-3. **dist 纳入版本控制**：每次构建都产生 diff；当前部署流程依赖它，但值得评估是否改为构建时生成
-4. **格内吸附容许值**：残差 worst 5.5 mm 的最终容许值待 Rhino 承托弧加工尺寸确认（V4.11 已列未决）
+1. ~~VERSION_HISTORY 缺口~~（当日已补记为 V4.10）；~~`presets.js` 命名~~（当日已改名 `scenes.js`）
+2. **dist 纳入版本控制**：每次构建都产生 diff；当前部署流程依赖它，但值得评估是否改为构建时生成
+3. **格内吸附容许值**：残差 worst 5.5 mm 的最终容许值待 Rhino 承托弧加工尺寸确认（V4.11 已列未决）

@@ -12,7 +12,7 @@ export {
   mountRole,
 } from './mount/clamp.js';
 export { MODULES } from './modules.js';
-export { PILLAR_COLUMNS, EXHIBITIONS, PRESETS } from './presets.js';
+export { PILLAR_COLUMNS, EXHIBITIONS, PRESETS } from './scenes.js';
 export { clone, cells, envelope, valid, clampPosition, position, conflict, findSpace } from './grid.js';
 export {
   parentFamily,
