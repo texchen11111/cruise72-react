@@ -83,7 +83,7 @@ Cloudflare 生产 Worker 的已核验地址是 [`cruise72-react.2161598874.worke
 - 移动、缩放或删除梯柱若会让其他模块悬空，操作会被拒绝并保留原方案。缩小展板也可能因无法跨接两根梯柱而被拒绝；可先调整梯柱间距。
 - 画面、侧栏输入和导出使用相同规则。上下移动不能超过梯柱顶部；离墙距离也不能无限增加。
 
-**Rhino 模型精度（V4.9 起为真实网格，仍有包络说明）：** 梯柱与节点现在直接渲染从 `models/rhino/source/梯柱 节点.3dm` 导出的 Rhino 保存网格（`scripts/export-rhino.py` 提取，68 件 / 6304 三角面，毫米坐标，可复现），不再用立方体和圆柱近似。需要如实知道的限制：源文件里部分零件（前压板、鞍形壳体、挂钩等）以“包络”方式建模，导出网格是这些零件的占位实体，比真实加工件更“满”；节点背钩与梯柱横档的配合、承托弧的圆弧在网页里按网格原样呈现，工程加工仍以原始 3dm 为准。机械尺寸（25 mm 横档间距、9 mm 窄颈、Ø6×30 mm 导柱；滑块偏移 = 展板厚度，±7 mm 为压板弹簧补偿行程）与 48 mm 布局网格分两层管理（`src/model/clamp.js`），互不换算。
+**Rhino 模型精度（V4.9 起为真实网格，仍有包络说明）：** 梯柱与节点现在直接渲染从 `models/rhino/source/ladder-node.3dm`（原件 `梯柱 节点.3dm` 的副本，SHA-256 与 `models/rhino/manifest.json` 记录一致）导出的 Rhino 保存网格（`scripts/export-rhino.py` 提取，68 件 / 6304 三角面，毫米坐标，可复现），不再用立方体和圆柱近似。需要如实知道的限制：源文件里部分零件（前压板、鞍形壳体、挂钩等）以“包络”方式建模，导出网格是这些零件的占位实体，比真实加工件更“满”；节点背钩与梯柱横档的配合、承托弧的圆弧在网页里按网格原样呈现，工程加工仍以原始 3dm 为准。机械尺寸（25 mm 横档间距、9 mm 窄颈、Ø6×30 mm 导柱；滑块行程 ±7 mm 是真实机构限制，夹持偏移 = 厚度 − 7 mm 夹口）与 48 mm 布局网格分两层管理（`src/model/clamp.js`），互不换算。**维护管线（单一来源）：** 原始 3dm → `scripts/export-rhino.py` → `models/rhino/generated/assembly.json`（生成产物，禁止手改）→ 复制到 `src/scene/models/rhino/assembly.json`（打包输入）→ `src/scene/models/rhino.js` 实例化；`npm test` 内含两份 assembly.json 字节一致性与 3dm 哈希校验，分叉即失败。当前仅梯柱与节点使用 Rhino 网格，展柜、层板、灯具等 12 种模块仍为程序生成几何（`src/scene/moduleGeometry.js`），大规模替换列为后续任务。
 
 ## 几个词是什么意思
 
@@ -165,7 +165,7 @@ npm run dev
 | 添加、复制、删除、移动、尺寸和父子跟随规则 | [`src/store/index.js`](src/store/index.js) | 保存当前方案，调用模型规则；`parentId` 表示梯柱 → 节点 → 拓展的挂接关系 |
 | 鼠标点选、位置拖动、尺寸控制点、从模块库拖入墙面 | [`src/scene/pointer.js`](src/scene/pointer.js) | 将鼠标动作转为位置或格尺寸，再交给 store 处理 |
 | 展柜、层板、灯具和基础模块的三维形状 | [`src/scene/moduleGeometry.js`](src/scene/moduleGeometry.js) | 负责把模块组合成 Three.js 场景；新 Rhino 与界面模型集中在 `src/scene/models/` |
-| Rhino V3 梯柱、节点的真实网格 | [`src/scene/models/rhino.js`](src/scene/models/rhino.js)、[`models/rhino/`](models/rhino/manifest.json)、[`scripts/export-rhino.py`](scripts/export-rhino.py) | 从 `梯柱 节点.3dm` 提取的 68 件保存网格（毫米，双写到 `src/scene/models/rhino/assembly.json`）；`manifest.json` 记录 48 / 9 / 6 / 30 / 25 mm 接口尺寸与源文件哈希；加工以原始 3dm 为准 |
+| Rhino V3 梯柱、节点的真实网格 | [`src/scene/models/rhino.js`](src/scene/models/rhino.js)、[`models/rhino/`](models/rhino/manifest.json)、[`scripts/export-rhino.py`](scripts/export-rhino.py) | 从 `models/rhino/source/ladder-node.3dm`（原件 `梯柱 节点.3dm`）提取的 68 件保存网格（毫米，`generated/assembly.json` 为生成产物，双写到 `src/scene/models/rhino/assembly.json` 供打包）；`manifest.json` 记录 48 / 9 / 6 / 30 / 25 mm 接口尺寸与源文件哈希；测试校验两份网格字节一致；加工以原始 3dm 为准 |
 | 机械参数层（夹持、厚度、滑块行程） | [`src/model/clamp.js`](src/model/clamp.js) | 展板厚度 1–12 mm、夹口 7 mm、滑块 ±7 mm 行程、挂点角色（下承托 / 上限位 / 中间）；与 48 mm 网格分两层管理 |
 | 软质、洞洞板、网状、金属和系绳界面 | [`src/scene/models/surfaces.js`](src/scene/models/surfaces.js) | 新拓展模型统一放在 `src/scene/models/`，分类资料仍在 `src/model/index.js` |
 | 三维长方体、圆柱这些基础形状 | [`src/scene/primitives.js`](src/scene/primitives.js) | 被多个模型重复使用，修改会影响多个地方 |

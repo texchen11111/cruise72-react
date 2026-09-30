@@ -170,14 +170,14 @@ const mechanismsOf = (ownerId) => {
   const sliders = slidersOf('a');
   assert.equal(sliders.length, 4, 'panel renders four slider groups');
   assert.ok(
-    sliders.every((s) => Math.abs(s.position.z - 0.006) < 1e-9),
-    'sliders start at the 6 mm reference thickness',
+    sliders.every((s) => Math.abs(s.position.z + 0.001) < 1e-9),
+    'sliders start at offset t-7 for the 6 mm reference thickness',
   );
   assert.equal(store.patchItem('a', { exhibitMm: 12 }), true);
   assertMountGeometry();
   assert.ok(
-    slidersOf('a').every((s) => Math.abs(s.position.z - 0.012) < 1e-9),
-    '12 mm thickness drives all four sliders outward by exactly 12 mm',
+    slidersOf('a').every((s) => Math.abs(s.position.z - 0.005) < 1e-9),
+    '12 mm thickness drives all four sliders to offset +5 mm',
   );
   assert.equal(store.patchItem('a', { exhibitMm: 99 }), false);
   assert.equal(
@@ -189,8 +189,8 @@ const mechanismsOf = (ownerId) => {
   assert.equal(store.patchItem('a', { exhibitMm: 6 }), true);
   assertMountGeometry();
   assert.ok(
-    slidersOf('a').every((s) => Math.abs(s.position.z - 0.006) < 1e-9),
-    'sliders return to the 6 mm reference after restoring thickness',
+    slidersOf('a').every((s) => Math.abs(s.position.z + 0.001) < 1e-9),
+    'sliders return to offset -1 mm after restoring the 6 mm thickness',
   );
   // 非夹持模块（如灯具）的派生节点滑块收回为完整立方体。
   const lampSliders = slidersOf(

@@ -6,7 +6,7 @@ import { MM, sliderOffsetMm, sliderRetractMm } from '../../model/clamp.js';
 // models/rhino/source/ladder-node.3dm 提取，双写到 models/rhino/generated/
 // 与本目录，单一来源、可复现；禁止用立方体/圆柱近似替代。
 export const RHINO_V3 = {
-  source: '梯柱 节点.3dm',
+  source: 'ladder-node.3dm（原件：梯柱 节点.3dm）',
   units: 'Millimeters',
   partCount: assembly.parts.length,
   triangleCount: assembly.parts.reduce((n, p) => n + p.indices.length / 3, 0),

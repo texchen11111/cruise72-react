@@ -7,25 +7,33 @@ export const MM = 0.001;
 export const CLAMP = {
   // 节点锚点面：世界 z = gz * 48 + 24 mm（24 mm 为锚点离网格背面的固定偏置）。
   anchorFromGridZMm: 24,
-  // 固定软垫前面（锚点坐标系，朝离墙方向为正）。
+  // 固定软垫前面（锚点坐标系，朝离墙方向为正）。展板背面落在软垫面上，
+  // 由软垫 + 前压板夹持（见图1：展板背面贴节点壳体、蓝压板压在正面）。
   padFrontMm: 33.4,
-  // 参考夹持状态（厚 6 mm）下展板背面位置；夹口深度 = jawBack - padFront = 7 mm。
+  // 滑块零位面：Rhino 参考状态（“6 mm 夹持状态”）下滑块后缘位置。
+  // 压板厚 5.5，占 40.4..45.4；它不是展板位置，只是滑块自身的基准。
   jawBackMm: 40.4,
   referenceExhibitMm: 6,
+  // 夹口深度 = jawBack - padFront = 7 mm：滑块零位比软垫面前出 7 mm，
+  // 因此夹持 t mm 展板所需滑块偏移 = t - 7。
   gapMm: 7,
   guideDiameterMm: 6,
   guideLengthMm: 30,
   // 梯柱横档机械间距（25 mm）：与 48 mm 布局网格互质，两套数据永不换算。
   rungPitchMm: 25,
-  // 滑块（前压板 + 圆导柱 + 轴尾防拔）允许的最大外移行程。
+  // 滑块真实行程限制（锚点坐标系，相对零位）：导柱内端止挡不得脱出机芯
+  // （止挡 z = 10.4 + offset ≥ 机芯背面 2.4 ⇒ offset ≥ -8），压板不得撞上
+  // 软垫（压板背面 = 40.4 + offset ≥ 33.4 ⇒ offset ≥ -7），取两者更严格者；
+  // 外拉由导柱与机芯侧壁孔的配合长度限制在 +7。⇒ offset ∈ [-7, +7]，
+  // 对应可夹厚度 0–14 mm，产品限定 1–12 mm。
   maxOutwardTravelMm: 7,
-  // 可夹持展板厚度范围（含）。
+  // 可夹持展板厚度范围（含）。受滑块行程 ±7 mm 约束：t = offset + 7。
   exhibitRangeMm: [1, 12],
   nodeSizeMm: 48,
 };
 
 // 五个薄界面类型按真实夹持机构渲染；其余 mount≥2 模块的派生节点
-// 仍渲染真实节点装配，但滑块停在参考位（它们不是被夹持的平面展品）。
+// 仍渲染真实节点装配，但滑块收回为完整立方体（它们不是被夹持的平面展品）。
 export const isExhibitType = (type) =>
   ['panel', 'pegboard', 'mesh', 'metal', 'rope'].includes(type);
 
@@ -34,23 +42,25 @@ export function validThickness(t) {
   return Number.isFinite(t) && t >= lo && t <= hi;
 }
 
-// 厚度驱动滑块（夹持状态）：前压板压在展板【正面】——压板背面贴住展板前面
-// （40.4 + t），双圆导柱穿过展板角部孔、端面与板面齐平并藏在压板后方。
-// 滑块偏移 = 厚度 t（1–12 mm）；±7 mm 的 maxOutwardTravel 指压板在导柱上的
-// 弹簧补偿行程（相对轴肩），不是滑块本身的移动范围。范围外由 validThickness 拒绝。
+// 厚度驱动滑块（夹持状态）：展板背面落在软垫前面 33.4，前压板背面须贴住
+// 展板正面（33.4 + t）。压板背面 = 滑块零位 40.4 + offset，故 offset = t − 7。
+// t = 6（Rhino 参考厚度）时 offset = −1，与 3dm 里“6 mm 夹持状态”网格相差 1 mm
+// 的建模余量；导柱随滑块整体移动，尖端 = 展板正面，端面齐平藏于压板后。
+// 行程 ±7 mm 是真实机构限制（见 CLAMP.maxOutwardTravelMm 注释），
+// 范围外由 validThickness 拒绝。
 export function sliderOffsetMm(t = CLAMP.referenceExhibitMm) {
-  return t;
+  return t - CLAMP.gapMm;
 }
 
-// 非夹持状态（节点连接其他模块或独立放置）：滑块完全收回，压板背面与机芯
-// 前面（33.4 mm）齐平，节点外观收拢为完整立方体。
+// 非夹持状态（节点连接其他模块或独立放置）：滑块完全收回（offset = −7），
+// 压板背面与软垫/机芯前面（33.4）齐平，节点外观收拢为完整立方体。
 export const sliderRetractMm = () => -CLAMP.maxOutwardTravelMm;
 
-// 展板在锚点坐标系中的位置：背面固定 ⇒ 夹口深度恒定，正面随厚度外移，
-// 中心偏差对称且不超过 3 mm（受 maxOutwardTravel 约束的中心稳定方案）。
-export const exhibitBackMm = () => CLAMP.jawBackMm;
-export const exhibitFrontMm = (t) => CLAMP.jawBackMm + t;
-export const exhibitCenterMm = (t) => CLAMP.jawBackMm + t / 2;
+// 展板在锚点坐标系中的位置：背面固定在软垫面 33.4（贴合有支撑），
+// 正面随厚度外移，中心偏差对称且不超过 3 mm。
+export const exhibitBackMm = () => CLAMP.padFrontMm;
+export const exhibitFrontMm = (t) => CLAMP.padFrontMm + t;
+export const exhibitCenterMm = (t) => CLAMP.padFrontMm + t / 2;
 
 // 挂点角色：底行从下方承托展板，顶行从上方限制/压住，其余为中间限位。
 // 单行挂点（如横杆坐在两个节点上）一律视为下承托。

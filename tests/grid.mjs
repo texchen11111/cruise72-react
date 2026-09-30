@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   MODULES as M,
   PRESETS,
@@ -183,40 +185,51 @@ ok(
 // 厚度合法性：范围 1–12 mm，之外拒绝。
 ok(!validThickness(0) && !validThickness(13) && !validThickness(NaN), 'thickness out of range rejected');
 ok(validThickness(1) && validThickness(12) && validThickness(6.5), 'thickness range accepted');
-// 中心稳定（背面固定 ⇒ 中心相对参考仅偏移 (t-6)/2，最大 3 mm）且压板全程贴合。
-ok(exhibitBackMm() === CLAMP.jawBackMm, 'exhibit back fixed at jawBack (clamp mouth constant)');
-ok(exhibitFrontMm(6) === 46.4 && exhibitFrontMm(12) === 52.4, 'exhibit front tracks thickness');
+// 中心稳定（背面固定在软垫面 ⇒ 中心相对参考仅偏移 (t-6)/2，最大 3 mm）且压板全程贴合。
+ok(exhibitBackMm() === CLAMP.padFrontMm, 'exhibit back rests on the pad front (33.4 mm)');
+ok(exhibitFrontMm(6) === 39.4 && exhibitFrontMm(12) === 45.4, 'exhibit front tracks thickness');
 ok(
-  exhibitCenterMm(6) === 43.4 &&
-    exhibitCenterMm(12) - 43.4 === 3 &&
-    43.4 - exhibitCenterMm(1) === 2.5,
+  exhibitCenterMm(6) === 36.4 &&
+    exhibitCenterMm(12) - 36.4 === 3 &&
+    36.4 - exhibitCenterMm(1) === 2.5,
   'exhibit centre deviates from the reference by exactly (t-6)/2 mm',
 );
 ok(
-  Math.abs(exhibitCenterMm(CLAMP.exhibitRangeMm[0]) - 43.4) <= 3 &&
-    Math.abs(exhibitCenterMm(CLAMP.exhibitRangeMm[1]) - 43.4) <= 3,
+  Math.abs(exhibitCenterMm(CLAMP.exhibitRangeMm[0]) - 36.4) <= 3 &&
+    Math.abs(exhibitCenterMm(CLAMP.exhibitRangeMm[1]) - 36.4) <= 3,
   'exhibit centre stays within 3 mm of the reference across the range',
 );
 ok(
-  exhibitFrontMm(1) - 40.4 === sliderOffsetMm(1) &&
-    exhibitFrontMm(12) - 40.4 === sliderOffsetMm(12),
+  CLAMP.jawBackMm + sliderOffsetMm(1) === exhibitFrontMm(1) &&
+    CLAMP.jawBackMm + sliderOffsetMm(12) === exhibitFrontMm(12),
   'press plate back (40.4 + offset) touches the exhibit front at any valid thickness',
 );
-// 滑块行程：offset = 厚度 t（压板整体外移压正面）；±7 是压板在导柱上的弹簧
-// 补偿行程（相对轴肩），不是滑块移动范围，因此 offset 可超出 7。
-ok(sliderOffsetMm(6) === 6 && sliderOffsetMm(CLAMP.referenceExhibitMm) === 6, 'slider offset equals thickness');
+// 滑块行程：offset = t − 7（压板背面贴展板正面；滑块零位 40.4 比软垫面 33.4
+// 前出 7 mm）。±7 mm 是真实机构行程限制，因此厚度被约束在 0–14 mm。
+ok(
+  sliderOffsetMm(6) === -1 && sliderOffsetMm(CLAMP.referenceExhibitMm) === -1,
+  'slider offset equals thickness minus the 7 mm clamp mouth',
+);
+for (let t = 0; t <= 14; t++) {
+  ok(
+    Math.abs(sliderOffsetMm(t)) <= CLAMP.maxOutwardTravelMm,
+    'slider travel within ±' + CLAMP.maxOutwardTravelMm + ' mm at t=' + t,
+  );
+}
 for (let t = CLAMP.exhibitRangeMm[0]; t <= CLAMP.exhibitRangeMm[1]; t++) {
   ok(
     CLAMP.jawBackMm + sliderOffsetMm(t) === exhibitFrontMm(t),
-    'clamp mouth back + offset equals exhibit front at t=' + t,
+    'slider reference plane + offset equals exhibit front at t=' + t,
   );
+  // 导柱随滑块整体移动：尖端止于展板正面（藏于压板后），内端止挡不脱出机芯。
   ok(
-    CLAMP.padFrontMm + CLAMP.gapMm + t > exhibitFrontMm(t) - 1e-9,
-    'guides never pass the exhibit front at t=' + t,
+    CLAMP.jawBackMm + sliderOffsetMm(t) === exhibitFrontMm(t) &&
+      CLAMP.jawBackMm - CLAMP.guideLengthMm + sliderOffsetMm(t) >= 2.4,
+    'guide tip stops at the exhibit front and inner stop stays inside the cartridge at t=' + t,
   );
 }
-// 收回状态：连接其他模块/独立放置时滑块全收，压板背面与机芯前面齐平，
-// 节点外观收拢为完整立方体。
+// 收回状态：连接其他模块/独立放置时滑块全收（offset = −7），压板背面与
+// 软垫/机芯前面齐平（33.4 mm），节点外观收拢为完整立方体。
 ok(
   sliderRetractMm() === -CLAMP.maxOutwardTravelMm &&
     CLAMP.jawBackMm + sliderRetractMm() === CLAMP.padFrontMm,
@@ -241,6 +254,20 @@ ok(mountRole(3, 3, 3) === 'lower-support', 'single row counts as support');
   ok(
     pts.every((p) => p.gy === panel.gy || p.gy === panel.gy + cells(panel)[1] - 1),
     'panel mount rows on bottom and top edges',
+  );
+}
+// 模型资产单一来源：src 下的 assembly.json 只能由 models/rhino/generated/
+// 复制而来（scripts/export-rhino.py 双写），禁止人工改其中一份造成分叉；
+// 源 3dm 必须与 manifest 记录哈希一致。
+{
+  const sha = (p) => createHash('sha256').update(readFileSync(p)).digest('hex');
+  const generated = sha('models/rhino/generated/assembly.json'),
+    bundled = sha('src/scene/models/rhino/assembly.json');
+  ok(generated === bundled, 'bundled assembly.json is byte-identical to the generated one');
+  const manifest = JSON.parse(readFileSync('models/rhino/manifest.json', 'utf8'));
+  ok(
+    sha(manifest.sourcePath) === manifest.sourceSha256,
+    'models/rhino/source 3dm matches the hash recorded in manifest.json',
   );
 }
 console.log(checks + ' grid assertions passed; all space and exhibition presets valid.');

@@ -8,14 +8,15 @@ import {
   cells,
   CLAMP,
   isExhibitType,
+  exhibitBackMm,
 } from '../model/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
 import { buildSurface } from './models/surfaces.js';
 
 const REF = CLAMP.referenceExhibitMm;
-// 模块坐标系中薄板背面的 z：锚点（gz*48+24 mm）+ 夹口背侧 40.4 mm。
-const exhibitBackZ = (a, gz) => (gz - a.gz) * PITCH + (CLAMP.anchorFromGridZMm + CLAMP.jawBackMm) * 0.001;
+// 模块坐标系中薄板背面的 z：锚点（gz*48+24 mm）+ 软垫面前缘（展板背面贴合面）。
+const exhibitBackZ = (a, gz) => (gz - a.gz) * PITCH + (CLAMP.anchorFromGridZMm + exhibitBackMm()) * 0.001;
 
 export function createModuleBuilder(ctx) {
   const { mat, textTexture, shared } = ctx.materials;
@@ -51,7 +52,10 @@ export function createModuleBuilder(ctx) {
     else if (['pegboard', 'mesh', 'metal', 'rope'].includes(a.type)) {
       buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange }, { backZ });
     } else if (a.type === 'panel') {
-      // 展板整板夹持：前压板压在正面（见图1），圆导柱穿角部孔、端面与板面齐平藏于压板后。
+      // 展板整板夹持（见图1）：背面贴软垫面（锚点 + 33.4 mm），蓝色前压板
+      // 背面贴正面（33.4 + t）。导柱随滑块移动、尖端止于板正面并藏于压板后；
+      // 整板无孔状态下导柱在角部区从板面进入板体（真实机构需角部孔/槽，
+      // 未与用戶确认前不开孔，列为已知未确认项）。
       const depth = thicknessMm * 0.001;
       cube(g, w, h, depth, 0, 0, backZ + depth / 2, white);
       const front = new THREE.Mesh(

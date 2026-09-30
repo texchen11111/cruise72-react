@@ -147,8 +147,8 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
   assert.equal(anchors.length, 4, 'panel carries four derived mount anchors');
   assert.equal(sliders.length, 4, 'each derived node has a slider group');
   assert.ok(
-    sliders.every((s) => Math.abs(s.position.z - 0.012) < 1e-9),
-    'thickness 12 mm drives every slider outward by 12 mm (press plate on exhibit front)',
+    sliders.every((s) => Math.abs(s.position.z - 0.005) < 1e-9),
+    'thickness 12 mm drives every slider to offset t-7 = 5 mm',
   );
   assert.ok(
     mechanisms.filter((m) => m.userData.mechanism.role === 'upper-limit').length === 2 &&
@@ -170,8 +170,8 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
     if (o.userData.slider) rebuiltSliders.push(o);
   });
   assert.ok(
-    rebuiltSliders.every((s) => Math.abs(s.position.z - 0.001) < 1e-9),
-    'thickness 1 mm drives every slider outward by 1 mm',
+    rebuiltSliders.every((s) => Math.abs(s.position.z + 0.006) < 1e-9),
+    'thickness 1 mm drives every slider to offset t-7 = -6 mm',
   );
 }
 ctx.items = ctx.items.map((item) => ({ ...item, state: 1 }));
