@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import path from 'node:path';
-import { MODULES, position, EXHIBITIONS, PRESETS, cells } from '../src/model/index.js';
+import { MODULES, position, EXHIBITIONS, PRESETS, cells, prepareLayout, rungSnapShiftMm, mountRungResidualsMm } from '../src/model/index.js';
 
 // Exercise real Three.js geometry and animation without requiring a GPU.
 const result = await build({
@@ -72,7 +72,10 @@ const builder = createModuleBuilder(ctx);
 ctx.dispose = builder.dispose;
 for (const item of ctx.items) {
   const group = builder.buildModule(item);
-  assert.deepEqual(group.position.toArray(), position(item));
+  // 格内吸附：带挂点的模块在格位基础上有 y 向微调（rungSnapShiftMm）。
+  const expected = position(item);
+  expected[1] += rungSnapShiftMm(item, ctx.items) * 0.001;
+  assert.deepEqual(group.position.toArray(), expected);
   assert.equal(group.userData.type, item.type);
   let meshes = 0;
   group.traverse((object) => {
@@ -101,29 +104,30 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
   assert.ok(pillarMeshes >= 25, 'pillar renders the Rhino part set across stacked segments');
   assert.ok(pillarTris > 2000, 'pillar triangle budget comes from the real ladder mesh');
 
-  // 横档渲染相位：48 mm 网格锚点与 25 mm 档距互质，扫描 0–25 mm 后相位 12 mm
-  // 使全部预设节点行锚点-横档中心误差 ≤ 4.5 mm（无相位时差 11.5 mm）。
+  // 格内吸附最近横档（48/25 互质偏差的装配方案，见 model/index.js 注释）：
+  // 全部预设/展陈的挂点在微调后残差 ≤ 5.5 mm、微调量 ≤ 12.5 mm，且按占位
+  // 钩口包络（高 7 mm，横档厚 4.8 mm，设计咬合中心距节点中心 15 mm）计算，
+  // 残差 5.5 mm 时背钩与横档保持 ≥ 2.0 mm 实体重叠，不脱钩。
   {
-    const rows = new Set();
+    let worst = 0, maxShift = 0, n = 0;
     for (const ex of [...EXHIBITIONS, ...PRESETS]) {
-      for (const it of ex.items) {
-        if (it.type === 'panel') {
-          const [, h] = cells(it);
-          rows.add(it.gy);
-          rows.add(it.gy + h - 1);
-        } else if (it.type === 'node') rows.add(it.gy);
+      const items = prepareLayout(ex.items);
+      for (const a of items) {
+        if (a.type === 'pillar') continue;
+        if (!(MODULES[a.type]?.mount || a.type === 'block')) continue;
+        const shift = rungSnapShiftMm(a, items);
+        const res = mountRungResidualsMm(a, items);
+        if (!res.length) continue;
+        maxShift = Math.max(maxShift, Math.abs(shift));
+        for (const r of res) {
+          worst = Math.max(worst, r);
+          n++;
+        }
       }
     }
-    const phase = RHINO_V3.pillar.rungRenderPhaseMm ?? 0;
-    const err = (gy) => {
-      const target = 24 + 48 * gy - phase - RHINO_V3.pillar.rungFirstCenterMm;
-      return Math.abs(25 * Math.round(target / 25) - target);
-    };
-    const worst = Math.max(...[...rows].map(err));
-    assert.ok(
-      worst <= 6,
-      `rung render phase keeps anchor-rung error bounded (worst ${worst.toFixed(2)} mm)`,
-    );
+    assert.ok(n >= 100, `snap covers all preset mount points (n=${n})`);
+    assert.ok(maxShift <= 12.5 + 1e-9, `snap shift bounded (max ${maxShift.toFixed(2)} mm)`);
+    assert.ok(worst <= 5.5 + 1e-9, `rung snap residual bounded (worst ${worst.toFixed(2)} mm)`);
   }
   const block = ctx.models.get('block');
   let blockSlider = false;

@@ -256,18 +256,18 @@ ok(mountRole(3, 3, 3) === 'lower-support', 'single row counts as support');
     'panel mount rows on bottom and top edges',
   );
 }
-// 模型资产单一来源：src 下的 assembly.json 只能由 models/rhino/generated/
+// 模型资产单一来源：src 下的 assembly.json 只能由 assets/rhino/generated/
 // 复制而来（scripts/export-rhino.py 双写），禁止人工改其中一份造成分叉；
 // 源 3dm 必须与 manifest 记录哈希一致。
 {
   const sha = (p) => createHash('sha256').update(readFileSync(p)).digest('hex');
-  const generated = sha('models/rhino/generated/assembly.json'),
+  const generated = sha('assets/rhino/generated/assembly.json'),
     bundled = sha('src/scene/models/rhino/assembly.json');
   ok(generated === bundled, 'bundled assembly.json is byte-identical to the generated one');
-  const manifest = JSON.parse(readFileSync('models/rhino/manifest.json', 'utf8'));
+  const manifest = JSON.parse(readFileSync('assets/rhino/manifest.json', 'utf8'));
   ok(
     sha(manifest.sourcePath) === manifest.sourceSha256,
-    'models/rhino/source 3dm matches the hash recorded in manifest.json',
+    'assets/rhino/source 3dm matches the hash recorded in manifest.json',
   );
   ok(
     manifest.pillar.segmentHeightMm === 600 && manifest.pillar.rungContinuousAcrossSegments === true,

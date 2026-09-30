@@ -13,7 +13,7 @@ import sys
 import rhino3dm as rhino
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSETS = ROOT / 'models' / 'rhino'
+ASSETS = ROOT / 'assets' / 'rhino'
 SOURCE = ASSETS / 'source' / 'ladder-node.3dm'
 if len(sys.argv) > 1:
     incoming = pathlib.Path(sys.argv[1])
@@ -88,7 +88,7 @@ if skipped:
 
 manifest = {
     'sourceFile': '梯柱 节点.3dm',
-    'sourcePath': 'models/rhino/source/ladder-node.3dm',
+    'sourcePath': 'assets/rhino/source/ladder-node.3dm',
     'sourceSha256': hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
     'method': 'saved Rhino render meshes, no remodelling, no hardware scaling',
     'units': 'mm', 'toleranceMm': doc.Settings.ModelAbsoluteTolerance,

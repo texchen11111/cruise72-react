@@ -21,6 +21,8 @@ export const CLAMP = {
   guideLengthMm: 30,
   // 梯柱横档机械间距（25 mm）：与 48 mm 布局网格互质，两套数据永不换算。
   rungPitchMm: 25,
+  // 横档中心距段底 12.5 mm（源文件两段 600 mm 顶点级周期重复，工程位置恒定）。
+  rungFirstCenterMm: 12.5,
   // 滑块真实行程限制（锚点坐标系，相对零位）：导柱内端止挡不得脱出机芯
   // （止挡 z = 10.4 + offset ≥ 机芯背面 2.4 ⇒ offset ≥ -8），压板不得撞上
   // 软垫（压板背面 = 40.4 + offset ≥ 33.4 ⇒ offset ≥ -7），取两者更严格者；

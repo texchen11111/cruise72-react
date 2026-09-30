@@ -20,14 +20,11 @@ export const RHINO_V3 = {
   },
   pillar: {
     widthMm: 26.4, depthMm: 28.8, segmentHeightMm: 600, rungPitchMm: 25,
-    // 横档中心距段底 12.5 mm，全程 25 mm 连续（源文件两段 600 mm 顶点级周期重复）。
-    rungFirstCenterMm: 12.5, rungCountPerSegment: 24,
-    // 渲染相位：仅偏移横档（不偏移主轨，段间接轨不受影响）。48 mm 网格与
-    // 25 mm 档距互质，对全部预设节点行扫描 0–25 mm 后最优相位 12 mm，
-    // 使所有行锚点-横档中心误差 ≤ 4.5 mm（无相位时最差 11.5 mm）。
-    // 主轨不受此偏移；横档跨段保持 25 mm 连续（12.5+12+25k 对 600 取模后
-    // 首档中心 24.5 mm，段尾 599.5 mm，跨段间距仍为 25 mm）。
-    rungRenderPhaseMm: 12,
+    // 横档中心距段底 12.5 mm，全程 25 mm 连续（源文件两段 600 mm 顶点级周期
+    // 重复）。横档始终渲染在 Rhino 工程位置，不做任何相位偏移；节点-横档的
+    // y 向对位由格内吸附（model/index.js rungSnapShiftMm，minimax ≤ 12.5 mm）
+    // 在模块层完成，48/25 互质偏差的分析与数据见该文件注释。
+    rungCountPerSegment: 24,
   },
 };
 
@@ -99,10 +96,6 @@ export function buildRhinoPillar(g, hMeters, mats) {
     segment.position.y = bottom + i * segmentHeight - 60 * MM;
     for (const part of segmentPillarParts) {
       const mesh = new THREE.Mesh(partGeometry(part), materialForPart(part, mats));
-      // 横档施加渲染相位；主轨保持原位保证段间接轨。
-      if (part.role === 'pillar' && !isRailPart(part)) {
-        mesh.position.y = RHINO_V3.pillar.rungRenderPhaseMm * MM;
-      }
       mesh.userData.rhinoPart = part.name;
       segment.add(mesh);
     }

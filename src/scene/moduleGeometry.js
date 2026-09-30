@@ -9,6 +9,7 @@ import {
   CLAMP,
   isExhibitType,
   exhibitBackMm,
+  rungSnapShiftMm,
 } from '../model/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
@@ -36,6 +37,10 @@ export function createModuleBuilder(ctx) {
       [w, h, d] = (a.sizeCells || m.cells).map((v) => v * PITCH);
     g.userData.id = a.id;
     g.position.set(...position(a));
+    // 格内吸附最近横档：模块整体沿 y 微调（|s| ≤ 12.5 mm），让各挂点背钩
+    // 对准真实横档而不是抽象格点；横档保持 Rhino 工程位置。派生挂点坐标
+    // 相对于模块组，无需逐点改动。
+    g.position.y += rungSnapShiftMm(a, ctx.items || []) * 0.001;
     let act = null;
     // 薄界面（panel 与四种拓展界面）的派生挂点：板材背面位置由机械层决定。
     const pts = a.type !== 'block' && m.mount ? mountPoints(a, ctx.items || []) : [];
