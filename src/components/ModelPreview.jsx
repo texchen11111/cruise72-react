@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { generatePreview } from '../scene/createPlannerScene.js';
+import { generatePreview } from '../renderer/createPlannerScene.js';
 import { Icon } from './Icon.jsx';
 const cache = new Map();
 export function ModelPreview({ type, items, cacheKey }) {

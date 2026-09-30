@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import assembly from './rhino/assembly.json';
-import { MM, sliderOffsetMm, sliderRetractMm } from '../../model/clamp.js';
+import { MM, sliderOffsetMm, sliderRetractMm } from '../../core/mount/clamp.js';
 
 // Rhino V3 真实网格（毫米 → 米）。导出脚本 scripts/export-rhino.py 从
-// models/rhino/source/ladder-node.3dm 提取，双写到 models/rhino/generated/
+// assets/rhino/source/ladder-node.3dm 提取，双写到 assets/rhino/generated/
 // 与本目录，单一来源、可复现；禁止用立方体/圆柱近似替代。
 export const RHINO_V3 = {
   source: 'ladder-node.3dm（原件：梯柱 节点.3dm）',
@@ -22,7 +22,7 @@ export const RHINO_V3 = {
     widthMm: 26.4, depthMm: 28.8, segmentHeightMm: 600, rungPitchMm: 25,
     // 横档中心距段底 12.5 mm，全程 25 mm 连续（源文件两段 600 mm 顶点级周期
     // 重复）。横档始终渲染在 Rhino 工程位置，不做任何相位偏移；节点-横档的
-    // y 向对位由格内吸附（model/index.js rungSnapShiftMm，minimax ≤ 12.5 mm）
+    // y 向对位由格内吸附（core/mount/rungs.js rungSnapShiftMm，minimax ≤ 12.5 mm）
     // 在模块层完成，48/25 互质偏差的分析与数据见该文件注释。
     rungCountPerSegment: 24,
   },

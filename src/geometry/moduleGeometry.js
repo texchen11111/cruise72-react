@@ -10,7 +10,7 @@ import {
   isExhibitType,
   exhibitBackMm,
   rungSnapShiftMm,
-} from '../model/index.js';
+} from '../core/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
 import { buildSurface } from './models/surfaces.js';

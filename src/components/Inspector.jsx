@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import { MODULES as M, GRID, cells, assembly, isExhibitType, CLAMP } from '../model/index.js';
+import { MODULES as M, GRID, cells, assembly, isExhibitType, CLAMP } from '../core/index.js';
 import { Icon } from './Icon.jsx';
 
 // Commit on blur/Enter, matching the original native change event. Local draft

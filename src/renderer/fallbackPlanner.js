@@ -1,4 +1,4 @@
-import { MODULES as M, GRID, cells } from '../model/index.js';
+import { MODULES as M, GRID, cells } from '../core/index.js';
 
 // Keep the configurator useful when the host browser blocks WebGL.  This is a
 // plan-view fallback, not a second renderer: it reads the same store and model

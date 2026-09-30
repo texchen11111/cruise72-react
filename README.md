@@ -1,461 +1,130 @@
-# 72+ 邮轮模块配置器：使用与维护指南
+# 72+ 邮轮模块配置器
 
-这个网站让你在一面虚拟墙上摆放展柜、灯具、层板等模块，尝试不同活动的空间布局。你可以把它理解为一个带有尺寸规则的三维积木工具。
+基于 React、Three.js 和 48 mm 网格规则的墙面模块配置器。用户可以在梯柱墙上组合展板、展柜、灯具、层板等模块，调整位置和尺寸，并导出配置 JSON。
 
-这份指南面向没有编程基础的维护者。第一次修改，建议从“一处文字”开始，走完**修改 → 本机查看 → 检查 → 上传 → 确认上线**的全过程，再改尺寸、交互或三维模型。
+这是一个空间交互原型。页面中的挂接、承力、照明和香氛效果不代表最终工程验证结果。
 
-## 先找到你需要的内容
+## 项目目录
 
-- [网站在哪里，代码在哪里](#网站在哪里代码在哪里)
-- [两个本地副本与实验分支](#两个本地副本与实验分支)
-- [先学会使用网站](#先学会使用网站)
-- [几个词是什么意思](#几个词是什么意思)
-- [第一次在电脑上运行](#第一次在电脑上运行)
-- [想改什么，就找哪个文件](#想改什么就找哪个文件)
-- [五个具体修改例子](#五个具体修改例子)
-- [修改复杂功能时怎么做](#修改复杂功能时怎么做)
-- [怎样检查、上传和发布](#怎样检查上传和发布)
-- [出问题时怎么处理](#出问题时怎么处理)
-- [日常维护与改进顺序](#日常维护与改进顺序)
-- [让 AI 帮你修改的提问模板](#让-ai-帮你修改的提问模板)
-
-## 网站在哪里，代码在哪里
-
-当前源码为 V4.8 挂接修复版，在 Kimi 的 V4.7 基础上修复移动错位、无效挂接和新增节点误绑已有模块的问题。GitHub、Cloudflare 和 Sites 沿用现有项目；是否上线应以各平台的发布结果为准。
-
-| 位置 | 它的用途 | 更新方式 |
-| --- | --- | --- |
-| [原配置器网站（Sites）](https://cruise72-module-planner.aaaaajie19.chatgpt.site/) | 供访客直接打开使用，公开访问 | 需要通过 Sites 单独发布 |
-| [GitHub 源码仓库](https://github.com/texchen11111/cruise72-react) | 保存文件、修改记录和这份说明，仓库公开 | 把修改上传到 `main` 主分支 |
-| [Cloudflare 配置器后台](https://dash.cloudflare.com/59d3b4e645dce3ea2c7d805959c59471/workers/services/view/cruise72-react/production) | 托管另一份配置器，项目名为 `cruise72-react`；后台需要登录 | GitHub 的 `main` 更新后自动构建、部署 |
-| [原项目介绍网站](https://72cruise.haoooo.workers.dev/) | 介绍整个设计项目，配置器顶部会链接到这里 | 属于独立网站，不由本仓库更新 |
-| [Cloudflare 配置器（Worker）](https://cruise72-react.2161598874.workers.dev/) | `cruise72-react` 生产 Worker，当前可公开访问 | 由 Cloudflare Worker 部署；域名来自 Workers & Pages → Domains |
-
-**GitHub 更新会触发 Cloudflare 发布，但不会自动更新原来的 `chatgpt.site` 地址。** 检查效果时，先确认浏览器打开的是哪个网站。
-
-Cloudflare 生产 Worker 的已核验地址是 [`cruise72-react.2161598874.workers.dev`](https://cruise72-react.2161598874.workers.dev/)。控制台截图显示该地址允许任何持有链接的人访问；当前没有绑定自定义域名。若要绑定自己的域名，应在 **Domains → Add Domain** 完成 DNS 验证，并在绑定成功后把新地址同时更新到这里和 `src/App.jsx`。
-
-安全设置需要在 Cloudflare 控制台的 Worker 主机名范围内检查 WAF、Bot Fight Mode 和 Security Level。仓库代码无法读取或修改账号级防火墙策略；修改后请用无登录窗口测试生产地址，确认访客不会收到 403。
-
-同步基线：当前源码以 GitHub `main` 和本地工作目录的最新提交为准；发布前必须通过测试、构建和 Sites 部署检查。设计迭代记录见 [VERSION_HISTORY.md](VERSION_HISTORY.md)。
-
-## 两个本地副本与实验分支
-
-电脑里有两个同名的工作目录，分工不同，请不要混用：
-
-| 副本 | 路径 | 角色 |
-| --- | --- | --- |
-| 正式工作副本 | `/Users/tex/Pictures/邮轮72变/cruise72-react` | 唯一的开发副本：所有修改、测试、提交都在这里进行 |
-| Codex 参考副本 | `/Users/tex/Documents/Codex/2026-09-22/openai-hosting-json-id-react/work/site` | 历史参考：保持与 GitHub `main` 一致，不在其中开发或直接发布 |
-
-约定：
-
-- 任何改动先落在正式工作副本，跑通 `npm ci && npm test && npm run build` 后再提交推送到 `main`。
-- 试验性方案如果测试没通过、或被新方案取代，既不直接丢弃，也不留在副本工作区里：把它提交到 `archive/…` 归档分支（例如 `archive/mounting-experiment`）并推送，提交说明里注明“仅供参考、不要合并”。
-- Codex 副本只用于查阅历史实现；同步前先用 `git status` 确认没有未保存改动，再执行 `git pull --ff-only`。遇到分歧先检查原因，不要强制覆盖文件。
-- GitHub `main` 是唯一事实来源：Cloudflare 会自动跟随它构建部署，Sites 需要单独手动发布。
-
-原 Sites 项目配置保存在 [`.openai/hosting.json`](.openai/hosting.json)，项目 ID 为 `appgprj_6aaa5e1a9544819193287ca435127a86`。更新这个网站时要继续沿用它，保留原链接和公开权限。这个文件记录了项目关联和输出目录，不能仅凭文件判断网站当前访问权限。
-
-## 先学会使用网站
-
-先看页面顶部的四组场景效果图，可点击放大；“搭建此场景”会载入对应配置并跳到自定义工作区。图片用于表达氛围，精确尺寸以三维配置器为准。点击顶部“自定义配置”也能直接进入工作区。
-
-进入工作区后：
-
-1. **左侧是模块库**：先按“梯柱、节点、拓展”三大类筛选，再按细分类型筛选；点击模块，或把它拖进墙面。预设场景仍独立位于工作区下方，负责表达“展陈、共创、交流、休憩”等功能组合。
-2. **中间是三维工作区**：点击选中模块，拖动改变左右、上下位置；右侧蓝色控制点调整宽度，顶部橙色点调整高度，底部浅蓝点调整深度（正视时向上拖可增加深度）。右侧也可以输入尺寸格数。上级移动时，实际挂接的下级会跟随；在空白处拖动可以旋转观察角度。
-3. **右侧是模块设置**：调整位置、尺寸、颜色，查看接口方式，复制或移除模块。展柜、活动台、灯具、香氛和书托有相应开关或取阅操作，灯具还有亮度、色温设置。
-4. **下方是四种空间**：展陈空间、共创空间、交流市集、休憩空间。展陈空间还包含平面悬展、层架陈列、翻阅展示、混合策展四种配置。“演示场景切换”约每 6.5 秒切换；进入展陈空间后会循环其中的四种配置。
-5. **保存结果**：“导出方案”下载 JSON 文件，记录模块和位置；“存图”下载三维画面的 PNG 图片。
-
-工作区出现在屏幕内且选中模块后，方向键移动左右、上下，PageUp / PageDown 调整离墙距离。在输入框里打字时，方向键不会用于移动模块。右侧处于“模块设置”时，Delete / Backspace 可移除选中模块。
-
-**当前没有自动保存、方案导入或撤销按钮。** 刷新网页会恢复初始布局，切换预设或自动演示会替换当前布局。开始这些操作前，先导出需要保留的方案。JSON 可以作为记录和后续开发的数据，但目前不能在网页里一键导回；PNG 只是图片，不能恢复可编辑的布局。
-
-本网站是空间交互原型。显示的挂接、承力、照明和香氛效果不等于真实工程验证结果。
-
-### 挂接、移动和数量怎样理解
-
-- 初始方案是 **4 根梯柱 + 6 件拓展 = 10 件配置构件**，另有 18 处派生挂接点。挂接点用于画面和导出，不重复计入配置构件，也不会自动变成一大批独立模块。
-- 四点挂接的展板、层板等需要跨两根梯柱；灯具和信息牌使用单柱双点。挂点必须在梯柱的实际高度和离墙范围内。
-- 预设中的节点包含在拓展组合里，跟随组合重算。单独添加的基础节点只有在与拓展挂点重合时才能成为其上级；新添一个节点不会接管整面墙。
-- 移动、缩放或删除梯柱若会让其他模块悬空，操作会被拒绝并保留原方案。缩小展板也可能因无法跨接两根梯柱而被拒绝；可先调整梯柱间距。
-- 画面、侧栏输入和导出使用相同规则。上下移动不能超过梯柱顶部；离墙距离也不能无限增加。
-
-**Rhino 模型精度（V4.9 起为真实网格，V4.11 起横档全程连续，仍有包络说明）：** 梯柱与节点现在直接渲染从 `models/rhino/source/ladder-node.3dm`（原件 `梯柱 节点.3dm` 的副本，SHA-256 与 `models/rhino/manifest.json` 记录一致）导出的 Rhino 保存网格（`scripts/export-rhino.py` 提取，93 件 / 10692 三角面 = 梯柱 50 件 + 节点 43 件，毫米坐标，可复现），不再用立方体和圆柱近似。梯柱段高 600 mm，横档 25 mm 间距全程连续、跨段无断档（源文件两段 600 mm 顶点级周期重复，渲染只取第一段零件集平铺）。需要如实知道的限制：源文件里部分零件（前压板、鞍形壳体、挂钩等）以“包络”方式建模，导出网格是这些零件的占位实体，比真实加工件更“满”；节点背钩与梯柱横档的配合、承托弧的圆弧在网页里按网格原样呈现，工程加工仍以原始 3dm 为准。机械尺寸（25 mm 横档间距、9 mm 窄颈、Ø6×30 mm 导柱；滑块行程 ±7 mm 是真实机构限制，夹持偏移 = 厚度 − 7 mm 夹口）与 48 mm 布局网格分两层管理（`src/model/clamp.js`），互不换算；节点与横档的 y 向对位采用**格内吸附**（`src/model/index.js` 的 `rungSnapShiftMm`）：模块在格内沿 y 微调 ≤ 12.5 mm，minimax 对准最近横档——48 与 25 互质，纯格点锚定 worst 12.5 mm 会脱钩，全局渲染相位对布局后的真实挂载行集也无解；微调后全部预设/展陈挂点（103 处）残差 worst 5.5 mm / avg 2.66 mm，按占位钩口包络计算背钩与横档保持 ≥ 2.0 mm 实体重叠，横档始终位于 Rhino 工程位置。最终容许值待承托弧加工尺寸确认（`挂钩承托弧_待圆弧加工`）。导出的 JSON 里 `rungSnapShiftMm` 与 `anchor_world_mm` 已含该微调。**维护管线（单一来源）：** 原始 3dm → `scripts/export-rhino.py` → `models/rhino/generated/assembly.json`（生成产物，禁止手改）→ 复制到 `src/scene/models/rhino/assembly.json`（打包输入）→ `src/scene/models/rhino.js` 实例化；`npm test` 内含两份 assembly.json 字节一致性与 3dm 哈希校验，分叉即失败。当前仅梯柱与节点使用 Rhino 网格，展柜、层板、灯具等 12 种模块仍为程序生成几何（`src/scene/moduleGeometry.js`），大规模替换列为后续任务。
-
-## 几个词是什么意思
-
-| 词 | 在本项目里的意思 |
-| --- | --- |
-| 源码 | 人可以修改的原始文件，主要在 `src/` 文件夹 |
-| React / 组件 | 用来组织网页界面的工具；一个组件通常负责一个区域，例如左侧模块库 |
-| Three.js / 三维渲染 | 把模块形状、材质、灯光画成屏幕上的三维画面 |
-| CSS | 控制文字大小、颜色、间距、排版的样式文件 |
-| 状态（store） | 网页当前记住的内容，例如选中了谁、柜门是否打开 |
-| Node.js / npm | 在电脑上运行开发工具，以及安装项目所需工具的程序 |
-| Vite | 提供本机预览，并把源码整理成可发布文件的工具 |
-| 终端 | 输入命令的窗口；在 VS Code 中可以通过“终端 → 新建终端”打开 |
-| 本机预览 | 只在开发电脑上检查修改效果；不等于已经对外发布 |
-| 构建（build） | 把源码整理为 `dist/` 文件夹中的网站成品 |
-| Git / GitHub | Git 记录代码版本；GitHub 保存远程副本，便于协作和回退 |
-| commit / push | commit 是在电脑上保存一条修改记录；push 是把这些记录上传到 GitHub |
-| 部署 | 把网站成品发布到托管平台，让访客可以使用 |
-
-项目目前使用 React 19.2.0、Vite 7.1.7 和 Three.js 0.170.0。修改普通文字或样式不需要升级它们。
-
-## 第一次在电脑上运行
-
-### 1. 准备工具和项目文件
-
-需要 [VS Code](https://code.visualstudio.com/) 和 [Node.js](https://nodejs.org/)。本项目的 Vite 要求 Node.js 20.19+ 或 22.12+；使用 Node.js 22 系列时应至少为 22.12。安装 Node.js 时会一起安装 npm。
-
-如果电脑上已有这个项目的工作文件夹，直接用 VS Code 的“文件 → 打开文件夹”打开它。正确的项目根目录里能看到 `package.json`、`README.md`、`src`、`vite.config.js` 和 `wrangler.jsonc`。
-
-如果没有本地文件：
-
-- 打开 [GitHub 仓库](https://github.com/texchen11111/cruise72-react)，点击 **Code → Download ZIP**，解压后用 VS Code 打开。适合先练习；ZIP 不含 Git 历史，不能直接按后面的 Git 命令上传。
-- 如果要长期维护，用 VS Code 的“克隆存储库 / Git: Clone”功能，粘贴仓库地址 `https://github.com/texchen11111/cruise72-react.git`，选择保存位置并打开。如果提示缺少 Git，先按提示安装，再重启 VS Code。克隆会同时取得文件和版本记录。
-
-公开仓库人人可以下载，但只有获得仓库写入权限的账号才能直接上传。
-
-### 2. 安装项目需要的工具
-
-在项目根目录打开终端，逐条输入下面的命令，每条输入后按回车：
-
-```sh
-node -v
-npm -v
-npm ci
+```text
+.
+├── src/                  应用源码
+│   ├── components/       React 界面组件
+│   ├── core/             48 mm 领域规则：网格、模块资料、挂接、碰撞（纯逻辑，零 three）
+│   ├── geometry/         三维网格派生：物品 → BufferGeometry 的纯函数（依赖 core + three）
+│   ├── hooks/            React Hooks 预留目录
+│   ├── renderer/         Three.js 渲染运行时：renderer、相机灯光、材质、动画和指针交互
+│   ├── services/         浏览器服务和外部操作预留目录
+│   ├── store/            方案状态和用户操作
+│   ├── styles/           全局样式和工作区样式
+│   ├── App.jsx           React 页面组装
+│   └── main.jsx          React 启动入口
+├── assets/               原始设计资料和 Rhino 模型源文件
+├── public/               网站静态资源，例如场景概念图
+├── scripts/              Rhino 等模型资源的导出脚本
+├── tests/                网格、状态、React 和 Three.js 测试
+├── dist/                 构建生成的网站文件，不直接编辑
+├── versions/             历史源码快照，不参与网站运行
+├── package.json          npm 依赖和命令
+├── vite.config.js        Vite 开发与构建配置
+├── wrangler.jsonc        Cloudflare 部署配置
+└── VERSION_HISTORY.md    版本和设计迭代记录
 ```
 
-前两条显示版本号，最后一条按仓库中的版本清单安装工具。第一次运行需要联网，可能要等几分钟。成功后会出现 `node_modules/` 文件夹；不需要手动编辑它。
+`hooks/` 和 `services/` 当前只作为职责边界预留目录，暂不放实现文件。
 
-### 3. 打开本机预览
+## 核心分工
+
+```text
+React components  →  store  →  core
+                         ↘
+                           renderer / Three.js Canvas
+                              ↑
+                           geometry（core → 网格的纯派生）
+```
+
+- `components/` 负责页面、面板、输入和用户可见状态。
+- `store/` 负责当前方案状态，以及添加、移动、删除、缩放和场景切换等操作。
+- `core/` 负责纯业务规则：48 mm 网格、模块尺寸、父子挂接、碰撞、吸附和导出语义；不 import three，纯 Node 可测。
+- `geometry/` 负责把 core 的物品派生为三维网格（纯函数，无渲染器、无 store 订阅）。
+- `renderer/` 负责把模型结果渲染为 Three.js 场景并响应指针交互，不拥有 React 页面状态。
+- `assets/rhino/` 是 Rhino 原始资料；`src/geometry/models/rhino/assembly.json` 是打包使用的生成网格。
+
+修改时保持以下边界：界面逻辑放 React，业务规则放 core/store，网格派生放 geometry，三维画布逻辑放 renderer。不要在组件中重新实现碰撞或尺寸规则，也不要让 Three.js 直接改 React 状态。
+
+## 运行项目
+
+需要 Node.js 20.19+ 或 22.12+。
 
 ```sh
+npm ci
 npm run dev
 ```
 
-终端会显示一个 `Local` 地址，通常是 `http://localhost:5173/`，以实际显示为准。在浏览器中打开它。修改文件并保存后，页面通常会自动更新；如果正在改初始场景或状态，刷新一次页面再检查。
+然后打开终端显示的本机地址，通常是 `http://localhost:5173/`。不要直接双击 `index.html`。
 
-保持这个终端运行。要停下预览，在终端按 **Ctrl+C**，Mac 上这里也是 Control 键。要运行其他命令，可以另开一个终端。
+Three.js 0.170.0 由 `package.json` 和 `package-lock.json` 管理，不提交 `node_modules/`。
 
-不要直接双击 `index.html` 打开网站；它需要通过上述开发服务加载。`npm run dev` 配置为监听所有网络接口，在允许的网络环境中也可能被同一局域网设备访问；它是开发服务，不是长期对外托管方式。
-
-## 想改什么，就找哪个文件
-
-下面的路径都从项目根目录开始。点击链接可在 GitHub 查看文件；在 VS Code 左侧按同样的文件夹顺序寻找。
-
-| 想修改的内容 | 主要文件 | 修改时关注什么 |
-| --- | --- | --- |
-| 顶部名称、项目链接、导出按钮文字 | [`src/App.jsx`](src/App.jsx) | 页面顶栏和整体组合；键盘快捷键、JSON 下载也在这里 |
-| 浏览器标签页标题、网页简介 | [`index.html`](index.html) | `<title>` 和 `description`；保留脚本入口和 `importmap` |
-| 左侧模块库、分类按钮、操作提示 | [`src/components/Catalog.jsx`](src/components/Catalog.jsx) | 卡片的名称和尺寸来自模型资料，不能只在这里改 |
-| 右侧设置、颜色选项、配置清单 | [`src/components/Inspector.jsx`](src/components/Inspector.jsx) | 按钮、坐标输入、功能开关等；它调用 store 执行动作 |
-| 页面顶部场景图册、图片标题和载入入口 | [`src/components/SceneGallery.jsx`](src/components/SceneGallery.jsx) | 图册文案在 `stories`，与四个展陈子配置逐项对应 |
-| 四张场景概念图 | [`public/scenes/`](public/scenes/) | `flat.png`、`shelves.png`、`reading.png`、`mixed.png`；替换时保持文件名，或同步修改图册引用 |
-| 模块和展陈配置的三维缩略图 | [`src/components/ModelPreview.jsx`](src/components/ModelPreview.jsx) | 调用 `createPlannerScene.js` 的 `generatePreview()`；复用同一套几何，修改后刷新可清除内存缓存 |
-| 视角按钮、存图、场景按钮的布局 | [`src/components/Stage.jsx`](src/components/Stage.jsx) | 三维工作区的外层界面；场景资料来自 `PRESETS` |
-| “设计逻辑”弹窗里的文字 | [`src/components/AboutDialog.jsx`](src/components/AboutDialog.jsx) | 说明文字及弹窗内容 |
-| 模块卡片上的线条图标 | [`src/components/Icon.jsx`](src/components/Icon.jsx) | SVG 图标，也就是用线条坐标画出的图形 |
-| 字号、页面颜色、边距、手机排版 | [`src/styles/style.css`](src/styles/style.css) | 顶部颜色变量；底部 `@media` 管理不同屏幕宽度的布局 |
-| 模块名称、分类、尺寸、四种预设布局 | [`src/model/index.js`](src/model/index.js) | `MODULES` 是模块资料；`family/subkind` 是三级分类；`sizes` 是占位格数；`PRESETS` 是四种空间；`EXHIBITIONS` 是展陈子配置 |
-| 添加、复制、删除、移动、尺寸和父子跟随规则 | [`src/store/index.js`](src/store/index.js) | 保存当前方案，调用模型规则；`parentId` 表示梯柱 → 节点 → 拓展的挂接关系 |
-| 鼠标点选、位置拖动、尺寸控制点、从模块库拖入墙面 | [`src/scene/pointer.js`](src/scene/pointer.js) | 将鼠标动作转为位置或格尺寸，再交给 store 处理 |
-| 展柜、层板、灯具和基础模块的三维形状 | [`src/scene/moduleGeometry.js`](src/scene/moduleGeometry.js) | 负责把模块组合成 Three.js 场景；新 Rhino 与界面模型集中在 `src/scene/models/` |
-| Rhino V3 梯柱、节点的真实网格 | [`src/scene/models/rhino.js`](src/scene/models/rhino.js)、[`models/rhino/`](models/rhino/manifest.json)、[`scripts/export-rhino.py`](scripts/export-rhino.py) | 从 `models/rhino/source/ladder-node.3dm`（原件 `梯柱 节点.3dm`）提取的 93 件保存网格（梯柱 50 + 节点 43；毫米，`generated/assembly.json` 为生成产物，双写到 `src/scene/models/rhino/assembly.json` 供打包）；梯柱段高 600 mm、横档 25 mm 全程连续；`manifest.json` 记录 48 / 9 / 6 / 30 / 25 mm 接口尺寸与源文件哈希；测试校验两份网格字节一致；加工以原始 3dm 为准 |
-| 机械参数层（夹持、厚度、滑块行程） | [`src/model/clamp.js`](src/model/clamp.js) | 展板厚度 1–12 mm、夹口 7 mm、滑块 ±7 mm 行程、挂点角色（下承托 / 上限位 / 中间）；与 48 mm 网格分两层管理 |
-| 软质、洞洞板、网状、金属和系绳界面 | [`src/scene/models/surfaces.js`](src/scene/models/surfaces.js) | 新拓展模型统一放在 `src/scene/models/`，分类资料仍在 `src/model/index.js` |
-| 三维长方体、圆柱这些基础形状 | [`src/scene/primitives.js`](src/scene/primitives.js) | 被多个模型重复使用，修改会影响多个地方 |
-| 金属、玻璃、表面颜色和文字贴图 | [`src/scene/materials.js`](src/scene/materials.js) | 玻璃透明度、表面质感、展板文字的绘制方式 |
-| 墙面、地面、相机、灯光、网格 | [`src/scene/environment.js`](src/scene/environment.js) | `init` 初始化环境；`setView` 调整观察位置 |
-| 柜门、折叠台、灯光、香氛、书刊和场景过渡动画 | [`src/scene/animation.js`](src/scene/animation.js) | `createAnimation()` 提供每帧更新；`createPlannerScene.js` 负责启动、同步和清理 |
-| 自动演示的切换间隔 | [`src/store/index.js`](src/store/index.js) | `togglePlay` 中的定时器；它与三维动画速度分开控制 |
-| JSON 导出的字段和数据格式 | [`src/store/index.js`](src/store/index.js) | `exportData()`；下载文件名在 `App.jsx` |
-
-当前几何生成、鼠标交互、动画分别在 `moduleGeometry.js`、`pointer.js`、`animation.js`，通过 `createPlannerScene.js` 组装。Rhino 和新界面模型放在 `src/scene/models/`，避免把几何、交互和动画重新混在同一文件。此表描述的是当前实际结构。
-
-另外这些文件通常由有经验的开发者维护：
-
-| 文件或目录 | 用途与维护原则 |
-| --- | --- |
-| [`src/main.jsx`](src/main.jsx) | 启动 React、创建 store、加载样式；普通内容修改不用动它 |
-| [`package.json`](package.json)、[`package-lock.json`](package-lock.json) | 依赖工具与版本；`npm ci` 按锁定版本安装。`private: true` 表示不作为 npm 软件包发布，不代表 GitHub 仓库私有 |
-| [`vite.config.js`](vite.config.js) | 开发与打包配置；构建时会复制本地 Three.js 文件 |
-| [`vendor/`](vendor/) | 本地保存的 Three.js、相机控制工具及许可证；保持版本配套，不直接修改库源码 |
-| [`wrangler.jsonc`](wrangler.jsonc) | Cloudflare 部署配置：现有 Worker 为 `cruise72-react`，发布目录为 `dist` |
-| [`.openai/hosting.json`](.openai/hosting.json) | 原 Sites 项目关联；更新时沿用原项目 ID |
-| [`AGENTS.md`](AGENTS.md) | 告诉 AI 和开发者应遵守的项目规则 |
-| [`tests/`](tests/) | 自动检查网格、状态操作和界面行为的文件 |
-| `dist/` | 自动生成的网站成品；当前仓库也保存了一份，但修改必须从源码开始，不手工改成品 |
-| `node_modules/` | 自动安装的开发工具；不手工修改，不上传到仓库 |
-
-理解文件之间的关系，可以用一次“打开柜门”来串起来：
-
-**右侧开关（Inspector） → 保存开关状态并检查空间（store + model） → 更新柜门角度（animation） → 浏览器显示动画。** 柜门的形状由 moduleGeometry 生成，玻璃质感由 materials 提供。只改其中一处，未必能完成整个新功能。
-
-修改场景图时，可将自己的 PNG 图片放进 `public/scenes/`，使用现有的四个文件名替换对应图片；再改 `SceneGallery.jsx` 的标题和说明。构建会把图片复制到 `dist/scenes/`，不要直接改 `dist`。图片与三维模型是两套展示内容，替换图片不会改变模型布局。
-
-## 五个具体修改例子
-
-以下是练习方法，不表示这些改动已经应用。一次只做一个，确认成功再继续。
-
-### 例子一：修改网站顶部名称
-
-1. 打开 `src/App.jsx`，使用查找功能搜索“邮轮72变”，找到 `headtitle` 中显示的名称。
-2. 把显示的中文改为你需要的名称，保留周围的 `<div>`、`<small>` 等标记。
-3. 保存文件，在本机预览中看顶部是否正确。
-4. 如果还要修改浏览器标签页名称，再改 `index.html` 中的 `<title>`。网页上的名称和标签页名称是两处内容。
-
-文字通常适合直接修改；括号、引号、逗号和标签是程序结构，不要一起删除。全项目查找可用 VS Code 的 Ctrl+Shift+F，Mac 用 Command+Shift+F。
-
-### 例子二：把界面的蓝色改成另一种颜色
-
-打开 `src/styles/style.css`，在最上方找到：
-
-```css
---blue: #3158e8;
-```
-
-例如改成：
-
-```css
---blue: #216e62;
-```
-
-`#216e62` 是颜色编号。保存后检查按钮、选中状态和文字是否清楚。
-
-这会改变使用该变量的**网页界面**颜色。三维节点颜色、选框、展板图案在其他文件里也有颜色设置，不会全部跟着变化。若要统一品牌色，应一起检查 `Inspector.jsx`、`store/index.js`、`model/index.js` 和 `src/scene/` 中的颜色；修改前先全项目搜索原颜色编号。
-
-### 例子三：修改一个场景的名称和介绍
-
-打开 `src/model/index.js`，搜索 `PRESETS`，在“展陈空间”这一段找到 `name` 和 `tag`；其说明来自 `EXHIBITIONS`，例如“平面悬展”：
-
-```js
-name: '平面悬展',
-tag: '夹持 / 留白',
-desc: '以48 mm节点框选航线摄影与海报，灯具和展签共同组织阅读顺序。',
-```
-
-改引号里的文字，保留 `name`、`tag`、`desc` 这些字段名及逗号。它们分别对应场景名称、短标签和下方说明。刷新本机页面，检查场景卡片、中间标题和导出方案里的 `scene`（空间）与 `exhibition`（展陈配置）名称。
-
-同一文件中 `MODULES` 的 `name`、`intro`、`mechanism`、`parts` 等字段用于模块名称、介绍、实现方式和配件说明。少数 `note` 在文件后面又被赋值，例如 `MODULES.panel.note`，修改这类文字要找到最终赋值的位置。
-
-### 例子四：改变预设里某个模块的位置
-
-在 `src/model/index.js` 的 `EXHIBITIONS` 或 `PRESETS` 中找到对应配置，例如“平面悬展”中的：
-
-```js
-item('a', 'panel', 3, 27),
-```
-
-它的意思是：这件模块的编号为 `a`，类型为展板 `panel`，位于 X 方向第 3 格、Y 方向第 27 格。完整参数顺序是：
-
-```js
-item(id, type, gx, gy, state, gz)
-```
-
-| 参数 | 含义 |
-| --- | --- |
-| `id` | 同一场景内的唯一编号，不要重复 |
-| `type` | 模块类型，例如 `panel`、`cabinet`、`lamp`，必须与 `MODULES` 中的名称一致 |
-| `gx` / `gy` | 左右 / 上下的格坐标，必须是整数 |
-| `state` | `0` 关闭或收拢，`1` 开启或展开；省略时为 `0` |
-| `gz` | 离墙方向的格坐标；省略时为 `0`，注意它排在 `state` 后面 |
-
-例如把 `3` 改成 `4`，表示向右移动一格，也就是 48 mm。保存后运行 `npm test`，再刷新网页查看。预设直接载入，不能假设它会像鼠标拖动那样自动阻止错误位置；要通过检查确认没有重叠和超界。
-
-当前每格是 48 × 48 × 48 mm，墙面网格为 60 × 60 格，深度为 24 格。2900 mm 墙面中使用 2880 mm 网格，四边各留 10 mm。模块可以相邻，但不能占用同一块空间。
-
-### 例子五：让自动演示慢一点
-
-打开 `src/store/index.js`，搜索 `6500`，它在 `togglePlay` 的 `setInterval` 中，单位是毫秒。把这个间隔值改成 `10000`，就是约每 10 秒切换一次场景。
-
-刷新网页后点击“演示场景切换”，确认切换间隔和暂停按钮正常。它只改变场景切换的等待时间，不改变柜门和折叠台的动作速度。后者在 `animation.js` 的 `animate()` 中。
-
-## 修改复杂功能时怎么做
-
-### 修改模块尺寸、增加一种模块
-
-尺寸会同时影响画面、碰撞和预设布局，建议让开发者或 AI 协助，一起改完相关部分。
-
-- **调整已有模块占位**：改 `src/model/index.js` 的 `sizes`。例如 `[14, 11, 6]` 是宽、高、深的格数，不是毫米。文件后面的循环会用格数计算 `w/h/d`，所以只改前面模块资料里的 `w/h/d` 不会成为最终尺寸。
-- **调整实际外形**：检查 `moduleGeometry.js`。有些板厚、灯头和台面长度是单独写在建模代码中的数值，三维建模使用“米”，例如 `0.048` 米等于 48 mm。占位变化不保证这些细节自动跟着改变。
-- **增加新模块类型**：需要补齐 `MODULES` 资料、`family/subkind/interfaces`、`sizes` 格数、`moduleGeometry.js` 的形状分支或 `src/scene/models/` 中的模型函数和 `Icon.jsx` 的图标；若有新功能，再补 `Inspector.jsx` 控件、store 规则和动画。
-- **维护父子关系**：先选中画面里要使用的真实节点，再在其挂点位置添加拓展。只有位置相接才会绑定；远处的节点不会被用作上级。预设的派生节点归拓展组合管理。尺寸调整以当前左下角为锚点，超界、碰撞或失去支撑时会拒绝。
-- **调整开门或折叠范围**：同步检查 `cells()`、`envelope()`、`valid()`、`conflict()`。当前展柜开门额外预留前方 14 格；折叠台收拢和展开都保留 14 × 10 × 10 格空间。
-- **增加分类或场景**：分类按钮在 `Catalog.jsx` 中单独列出；场景来自 `PRESETS`，但按钮布局和测试也要检查。当前有些测试明确按 12 类模块、4 种空间及 4 种展陈配置检查，新增后应更新合理的预期，不能直接删除失败的检查。
-
-完成后验证：新模块在左侧可见、能加入墙面、右侧显示正确、边界和开关状态不重叠、可以导出，四个原场景仍然可用。
-
-**不要只修改 `PITCH` 就以为更改了全站网格尺寸。** 48 mm、墙面尺寸和格数也出现在界面文案、导出数据、环境网格及搜索规则中。这属于需要整体调整的功能改造。
-
-### 修改交互和动画
-
-鼠标操作找 `pointer.js`，键盘操作找 `App.jsx`，动作结果和合法性找 `store/index.js` 与 `model/index.js`。添加快捷键时，要检查用户在输入框中打字时是否会误触发。
-
-柜门和台面动作在 `animation.js` 的 `animate()` 中，使用逐帧接近目标角度的方式。代码中的 `0.12` 是每帧接近目标的比例，不是“0.12 秒”；修改后要实际观察不同设备上的速度。灯光、香氛粒子、昼夜背景也在这个函数中。
-
-动画已独立为文件；修改时应同时保留页面关闭时的清理逻辑，避免重复运行动画、重复绑定鼠标事件或持续占用显存。清理入口是 `destroy()`。
-
-### 添加保存、导入或其他新能力
-
-当前网站没有自己的业务服务器、数据库、登录和多设备同步。方案只在当前页面内存中。可以按以下顺序考虑改进：
-
-| 改进 | 需要处理的部分 | 验收例子 |
-| --- | --- | --- |
-| JSON 导入 | `App.jsx` 的入口、store 的载入方法、model 的数据验证 | 导出的方案能恢复；错误文件被拒绝并给出说明 |
-| 在本浏览器自动保存 | store 的保存与恢复、数据版本处理、清空入口 | 刷新后恢复；旧数据或损坏数据不会让网页白屏 |
-| 撤销 / 重做 | store 中记录每次修改前后的方案，界面添加按钮 | 移动、复制、删除都能撤销；拖动一次不会产生大量无意义步骤 |
-| 新模块与新场景 | model、几何、图标、控件和测试 | 旧场景继续可用，新模块显示和占位一致 |
-| 账户和多设备同步 | 需要另行设计服务器、数据库和访问权限 | 不同账号的数据隔离；保存失败时有提示 |
-
-这些是待开发功能，不是现有按钮。是否需要账户系统取决于实际使用需求，不必为了修改文字或布局先搭建服务器。
-
-## 怎样检查、上传和发布
-
-### 1. 检查本机效果
-
-先用 `npm run dev` 看修改是否符合预期。涉及界面或行为时，按以下清单操作：
-
-- 切换四种空间和四种展陈子配置；确认模块、缩略图和说明都出现。
-- 打开四张场景大图，点击“搭建此场景”，检查载入内容和滚动位置。
-- 添加、选择、拖动、复制、移除模块；在右侧输入坐标。
-- 尝试重叠或越界；应拒绝不合法的位置，而不是穿过其他模块。
-- 切换柜门、台面、灯具和香氛；确认动画和可用空间匹配。
-- 检查“正视”“透视”、网格、复位和自动演示。
-- 导出 JSON、保存 PNG，打开下载文件确认内容。
-- 缩窄浏览器窗口，检查小屏下按钮、文字和设置是否可用。
-
-这些操作会替换或修改布局，用测试方案即可。只改 README 时不需要为了文档重新做完整三维测试，但应检查文件路径、链接和操作说明。
-
-### 2. 运行自动检查和生产预览
-
-在项目根目录的终端逐条执行；上一条报错时先处理，不要带着错误继续发布。
+## 常用命令
 
 ```sh
+npm test          # 运行全部自动测试
+npm run build     # 生成 dist/ 部署文件
+npm run preview   # 预览最近一次构建结果
+```
+
+提交源码前至少运行：
+
+```sh
+npm ci
 npm test
 npm run build
-npm run preview
 ```
 
-| 命令 | 检查什么 | 不能替代什么 |
-| --- | --- | --- |
-| `npm test` | 网格、边界、碰撞、状态操作、导出结构、部分界面交互 | 真实三维画面的视觉验收；界面测试里三维渲染器是模拟的 |
-| `npm run build` | 是否能生成用于部署的 `dist/` | 云端部署成功、访客能正常使用 |
-| `npm run preview` | 在本机查看刚刚生成的成品；打开终端显示的 Local 地址 | 真正的线上发布 |
+测试覆盖网格边界、碰撞、父子挂接、状态操作、导出、Three.js 几何、动画和场景生命周期。自动测试不能替代真实浏览器中的 WebGL 画面检查。
 
-预览的是最近一次构建结果，之后又改了源码就要重新构建。测试还会核对挂点是否在梯柱高度内，以及真实 Three.js 节点在移动和缩放后的世界坐标。断言数量会随功能变化，不必追求固定数字。
+## 模型规则
 
-### 3. 把修改上传到 GitHub
+- 布局单位为 48 mm，网格大小为 `60 × 60 × 24` 格。
+- 梯柱、节点和拓展模块按父子关系挂接。
+- 挂接点是由模块和梯柱派生的数据，不重复计入模块清单。
+- 移动、缩放、删除会校验网格边界、占位冲突和挂接有效性。
+- 48 mm 布局网格与 Rhino 的毫米机械参数分开管理，禁止互相换算替代。
+- 展板厚度属于机械参数，当前有效范围为 1–12 mm。
+- 导出 JSON 同时包含模块、格坐标、尺寸、挂接点和机械参数。
 
-以下步骤适用于通过 Git 克隆取得的项目。使用 ZIP 的维护者，应先克隆一份仓库，把已确认的源码改动复制进去，不要复制 `node_modules/`。
+## 主要修改位置
 
-开始新一轮编辑前，确认上次工作已经保存成提交并上传，在终端运行：
-
-```sh
-git status
-git pull --ff-only
-```
-
-`git status` 显示本地有无未提交的文件修改；若有，先保留并处理这些修改。`git pull --ff-only` 取得远程更新；如果提示冲突或分支分歧，暂停并找协作者处理，不要强行覆盖。
-
-修改并检查完后，在 VS Code 的“源代码管理”里逐个查看差异，确认本次修改的文件，然后暂存这些文件、填写说明、提交并推送。第一次推送可能需要登录 GitHub；第一次提交可能要求设置 Git 的姓名和邮箱，这是版本记录中的署名。
-
-也可以使用终端。**下面只以修改 README 为例**，其他任务应把 `README.md` 换成实际修改的文件路径，逐个添加：
-
-```sh
-git diff
-git add README.md
-git commit -m "docs: update maintenance guide"
-git push origin main
-```
-
-`git diff` 用来核对变化，`git add` 选择要提交的文件，`commit` 在本机记录，`push` 才上传。不要把账号令牌、密码、无关文件或个人资料加入公开仓库。不要使用强制推送覆盖协作者的历史。
-
-如果修改了源码并重新构建，当前仓库中受 Git 管理的 `dist/` 也可能显示变化；不要手工修补它。Cloudflare 会自行重新构建。需要更新仓库内成品时，只提交通过检查后生成的那一套文件，并与源码放在同一条清晰的记录里。
-
-### 4. 确认 Cloudflare 自动发布
-
-当前已经连接 GitHub，无需为普通修改重新建项目或重复绑定账号。
-
-1. 推送到 `main` 后，打开 GitHub 对应的最新提交。
-2. 查看名为 **Workers Builds: cruise72-react** 的检查；如果还在运行，等待结束。
-3. 结果为成功后，进入 Cloudflare 后台确认对应版本，再从后台的访问入口打开配置器。
-4. 在线重复检查本次改变的部分。不要用原 Sites 地址来验证 Cloudflare 的更新。
-
-现有流程先运行 `npm run build`，再运行 `npx wrangler deploy`。配置文件 `wrangler.jsonc` 指定发布 `dist/` 到现有 Worker `cruise72-react`。曾出现“Vite 构建成功，但 Wrangler 解析配置失败”，已通过显式提供这个文件解决；不要为了普通内容修改删除它或更改 Worker 名称。
-
-有经验的维护者可先进行部署预检：
-
-```sh
-npm run build
-npx wrangler@4.137.0 deploy --dry-run
-```
-
-首次可能联网下载 Wrangler。`--dry-run` 不会上传或发布，也不能证明账号权限和实际线上发布一定成功。日常维护优先使用已连接的 GitHub 自动流程，不需要再手动运行正式部署命令。
-
-### 5. 更新原 Sites 地址
-
-GitHub 推送结束后，如果也要更新原来的 `chatgpt.site` 网站，还需要单独请求 Sites 发布。可把以下要求交给能够使用 Sites 的维护者或 AI：
-
-> 使用 GitHub 仓库 texchen11111/cruise72-react 的 main 最新版本，先测试并构建，再通过 Sites 发布。沿用 .openai/hosting.json 的原项目 ID appgprj_6aaa5e1a9544819193287ca435127a86，保留原链接和公开权限。不要新建网站。完成后提供实际发布的提交号，并验证线上页面。
-
-真正完成发布的标准是：发布成功，而且在目标网址能看到本次变化。更新 README 中的日期和记录前，也要先完成核验。
-
-## 出问题时怎么处理
-
-| 现象 | 先做什么 |
+| 需求 | 主要位置 |
 | --- | --- |
-| 找不到 `npm` 或 `node` 命令 | 安装 Node.js，然后关闭并重新打开 VS Code 终端，运行 `node -v` 和 `npm -v` |
-| 提示找不到 `package.json` | 检查打开的文件夹和终端位置，进入包含该文件的项目根目录 |
-| `npm ci` 下载失败 | 查看第一条错误，确认网络和 Node.js 版本；不要随意删除锁定文件或更换依赖版本 |
-| 开发地址打不开 | 确认 `npm run dev` 仍在运行，使用终端实际显示的 Local 地址；端口被占用时可能自动换号 |
-| 页面白屏或报语法错误 | 查看终端第一条报错，核对最近编辑处的引号、括号、逗号和文件路径 |
-| 界面出现，但三维画面没有 | 检查浏览器 WebGL / 图形加速及页面错误提示；构建后还要检查 `dist/vendor/` 是否包含 Three.js 文件 |
-| 模块移不动或开关被拒绝 | 先读页面提示；可能是超界或活动范围重叠，尤其是展柜开门需要额外深度 |
-| 改了尺寸但没变化 | 检查是否改在 `sizes`；刷新本机页面，检查几何代码里是否还有独立尺寸 |
-| 本机正常，线上仍是旧版 | 确认已 push，最新提交检查已成功，以及打开的是 Cloudflare 还是 Sites；Sites 要单独发布 |
-| Cloudflare 失败 | 打开失败提交的检查详情，找第一条具体错误；分别判断安装、构建、部署哪一步失败 |
-| 刷新后布局丢失 | 当前未实现持久保存；下次刷新或切换前先导出。导出的 JSON 暂无网页导入入口 |
-| `git push` 被拒绝 | 检查账号写入权限及远程是否有别人更新；不要使用强制推送解决协作冲突 |
+| 页面和面板 | `src/components/`、`src/App.jsx` |
+| React 状态订阅 | `src/hooks/usePlanner.js` |
+| 模块资料和场景预设 | `src/core/modules.js`、`src/core/presets.js` |
+| 网格、碰撞 | `src/core/grid.js` |
+| 挂接、横档吸附和夹持机械 | `src/core/mount/`（`mounting.js`、`rungs.js`、`clamp.js`） |
+| 装配物料清单 | `src/core/assembly.js` |
+| 添加、移动、删除 | `src/store/layoutActions.js` |
+| 场景切换和自动播放 | `src/store/sceneActions.js` |
+| 导出 | `src/store/exportData.js` |
+| 三维模块几何（纯派生） | `src/geometry/moduleGeometry.js`、`src/geometry/models/` |
+| 渲染器、相机、灯光和墙面环境 | `src/renderer/createPlannerScene.js`、`src/renderer/environment.js` |
+| 鼠标拖动和尺寸控制点 | `src/renderer/pointer.js` |
+| 动画 | `src/renderer/animation.js` |
+| 页面样式 | `src/styles/` |
+| Rhino 资源转换 | `scripts/export-rhino.py`、`assets/rhino/` |
 
-求助时提供：**在哪个网址或本机步骤出错、刚改了哪些文件、第一条错误原文、预期和实际结果**。如果日志里包含密码或令牌，先删去这些内容再分享。
+源码按「纯逻辑 → 纯派生 → 运行时」分为三层：`src/core/`（48 mm 领域规则，零 three 依赖，纯 Node 可测）、`src/geometry/`（物品 → 三维网格的纯函数派生，只依赖 core + three）、`src/renderer/`（Three.js 渲染运行时，管 renderer 生命周期、相机灯光、指针交互与 DOM 兜底）。依赖方向单向：`core ← geometry ← renderer`。各层 `index.js` 仅保留兼容性 re-export，导出面与拆分前一致；组件和测试仍从 `index.js` 导入。`src/core/README.md` 有 core 内部的职责分层说明，`src/services/` 目前为预留空目录。
 
-### 改坏了怎样恢复
+## 发布注意事项
 
-- 还没提交：先复制保留修改文件，再用编辑器撤销，或在“源代码管理”中逐文件检查后放弃需要撤回的改动。放弃改动会丢掉该文件未提交的内容，不要一次丢弃所有文件。
-- 已提交并推送：请协作者或 AI 对明确的错误提交创建一次 **revert（反向提交）**，再走检查和发布流程。这会保留原记录，并用新记录撤回改动。
-- 急需恢复线上：让维护者在对应托管平台选择已验证的旧版本回退，同时修正 GitHub 源码，避免下次自动部署又发布错误版本。Cloudflare 和 Sites 要分别处理。
+- `dist/` 是构建产物，修改源码后重新构建，不手工修改其中的文件。
+- Cloudflare 配置使用现有的 `wrangler.jsonc` 和 Worker 项目，不要创建替代项目。
+- `.openai/hosting.json` 中的 Sites 项目 ID 和访问配置必须保留。
+- `versions/` 只用于历史留档，不会被 Vite 打包，也不是网站静态资源。
+- 版本变化和设计决策记录在 [VERSION_HISTORY.md](VERSION_HISTORY.md)。
 
-## 日常维护与改进顺序
+## 维护原则
 
-每次开始先取得最新代码；每次只改一个明确目标，写清楚修改记录。两个人同时工作时，各用独立分支，也就是从现有版本分出一份工作线，通过 Pull Request（合并请求）检查后再合回 `main`，减少相互覆盖。
+每次只处理一个明确目标，先查看差异，再运行测试和构建。涉及模型尺寸、挂接、碰撞或导出时，要同时检查预设场景、Three.js 几何和测试。React 负责界面，Three.js 只负责 Canvas；新增事件、动画和 WebGL 资源时必须提供对应清理逻辑。
 
-维护时优先处理：
-
-1. **内容是否准确**：模块说明、场景名称、尺寸单位和工程限制是否仍与设计一致。
-2. **基础操作是否顺畅**：添加、移动、开关、导出是否正常；小屏下是否看得到并点得到按钮。
-3. **方案是否容易保存**：按需要开发导入、自动保存、撤销，避免反复丢失工作。
-4. **三维表现与性能**：再改模型精度、材质和动画；增加细节后检查普通电脑是否卡顿。
-5. **依赖与部署**：升级工具时单独提交，重新测试、构建并验证两个目标平台；不要与大型功能修改混在一起。
-
-React 负责界面，Three.js 负责三维画布；保持这个分工。添加事件或动画后要对应清理，修改尺寸规则后要同步预设、导出和测试。具体开发约定见 [AGENTS.md](AGENTS.md)。
-
-## 让 AI 帮你修改的提问模板
-
-不需要先懂所有代码。把“改哪里、改成什么、如何判断成功”讲清楚即可，例如：
-
-> 请先阅读 README 和 AGENTS.md，再修改网站顶部名称为“邮轮空间实验室”。保留现有布局、模块、交互和部署配置。先在本机检查顶部名称及浏览器标签页，并告诉我修改了哪些文件。此次先不要上传或部署。
-
-稍复杂的功能可以这样说：
-
-> 请为当前 React 配置器添加 JSON 导入。要求能重新载入现有导出文件；对不支持的版本、未知模块、重复编号、非整数坐标、超界和重叠给出明确提示，导入失败时保留当前方案。保持 48 mm 规则，先检查并扩展现有测试，再做浏览器操作验收。完成后列出改动和验证结果，暂不发布。
-
-准备发布时再明确目标：
-
-> 本机效果已确认。请检查并提交本次相关文件，推送到 GitHub main，确认 Cloudflare 最新提交的检查成功，再访问实际 Cloudflare 配置器核验。另将同一提交通过 Sites 发布到原项目，保留原链接和公开权限。报告两个网址分别对应的发布结果。
-
-AI 可以协助写代码和排错，最终仍应以实际页面、检查结果和目标网址上的效果为准。
+详细项目约束见 [AGENTS.md](AGENTS.md)。

@@ -1,25 +1,23 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-import path from 'node:path';
-import { MODULES, position, EXHIBITIONS, PRESETS, cells, prepareLayout, rungSnapShiftMm, mountRungResidualsMm } from '../src/model/index.js';
+import { MODULES, position, EXHIBITIONS, PRESETS, cells, prepareLayout, rungSnapShiftMm, mountRungResidualsMm } from '../src/core/index.js';
 
 // Exercise real Three.js geometry and animation without requiring a GPU.
 const result = await build({
   stdin: {
     contents: `
       export * as THREE from 'three';
-      export {createMaterials} from './src/scene/materials.js';
-      export {createModuleBuilder} from './src/scene/moduleGeometry.js';
-      export {createAnimation} from './src/scene/animation.js';
-      export {setupPointer} from './src/scene/pointer.js';
-      export {RHINO_V3} from './src/scene/models/rhino.js';
+      export {createMaterials} from './src/renderer/materials.js';
+      export {createModuleBuilder} from './src/geometry/moduleGeometry.js';
+      export {createAnimation} from './src/renderer/animation.js';
+      export {setupPointer} from './src/renderer/pointer.js';
+      export {RHINO_V3} from './src/geometry/models/rhino.js';
     `,
     resolveDir: process.cwd(),
   },
   bundle: true,
   format: 'esm',
   write: false,
-  alias: { three: path.resolve('vendor/three.module.js') },
 });
 const { THREE, createMaterials, createModuleBuilder, createAnimation, setupPointer, RHINO_V3 } = await import(
   'data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64')
@@ -104,7 +102,7 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
   assert.ok(pillarMeshes >= 25, 'pillar renders the Rhino part set across stacked segments');
   assert.ok(pillarTris > 2000, 'pillar triangle budget comes from the real ladder mesh');
 
-  // 格内吸附最近横档（48/25 互质偏差的装配方案，见 model/index.js 注释）：
+  // 格内吸附最近横档（48/25 互质偏差的装配方案，见 core/mount/rungs.js 注释）：
   // 全部预设/展陈的挂点在微调后残差 ≤ 5.5 mm、微调量 ≤ 12.5 mm，且按占位
   // 钩口包络（高 7 mm，横档厚 4.8 mm，设计咬合中心距节点中心 15 mm）计算，
   // 残差 5.5 mm 时背钩与横档保持 ≥ 2.0 mm 实体重叠，不脱钩。

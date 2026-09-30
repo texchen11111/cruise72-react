@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { JSDOM } from 'jsdom';
+import path from 'node:path';
 import { createPlannerStore } from '../src/store/index.js';
-import { mountPoints, ORIGIN, PITCH } from '../src/model/index.js';
+import { mountPoints, ORIGIN, PITCH } from '../src/core/index.js';
 
 // Run the real scene/environment orchestration; replace only GPU operations.
 const dom = new JSDOM('<!doctype html><div id="stage"></div>');
@@ -35,7 +36,7 @@ globalThis.ResizeObserver = class {
 };
 
 const result = await build({
-  entryPoints: ['src/scene/createPlannerScene.js'],
+  entryPoints: ['src/renderer/createPlannerScene.js'],
   bundle: true,
   format: 'esm',
   write: false,
@@ -44,16 +45,16 @@ const result = await build({
       name: 'gpu-boundary',
       setup(build) {
         build.onResolve({ filter: /^three$/ }, () => ({ path: 'three', namespace: 'gpu' }));
-        build.onResolve({ filter: /^three\/addons\/OrbitControls\.js$/ }, () => ({
+        build.onResolve({ filter: /^three\/addons\/controls\/OrbitControls\.js$/ }, () => ({
           path: 'orbit',
           namespace: 'gpu',
         }));
-        build.onLoad({ filter: /.*/, namespace: 'gpu' }, ({ path }) => ({
+        build.onLoad({ filter: /.*/, namespace: 'gpu' }, ({ path: modulePath }) => ({
           resolveDir: process.cwd(),
           contents:
-            path === 'orbit'
+            modulePath === 'orbit'
               ? `
-          import { Vector3 } from './vendor/three.module.js';
+          import { Vector3 } from ${JSON.stringify(path.resolve('node_modules/three/build/three.module.js'))};
           export class OrbitControls {
             target = new Vector3();
             update() {}
@@ -61,8 +62,8 @@ const result = await build({
           }
         `
               : `
-          export * from './vendor/three.module.js';
-          import { Texture } from './vendor/three.module.js';
+          export * from ${JSON.stringify(path.resolve('node_modules/three/build/three.module.js'))};
+          import { Texture } from ${JSON.stringify(path.resolve('node_modules/three/build/three.module.js'))};
           export class WebGLRenderer {
             domElement = document.createElement('canvas');
             shadowMap = {};

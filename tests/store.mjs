@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createPlannerStore } from '../src/store/index.js';
-import { PRESETS, clone, prepareLayout, mounted, CLAMP } from '../src/model/index.js';
+import { PRESETS, clone, prepareLayout, mounted, CLAMP } from '../src/core/index.js';
 const s = createPlannerStore();
 let notifications = 0;
 const off = s.subscribe(() => notifications++);

@@ -1,4 +1,4 @@
-import { MODULES as M } from '../model/index.js';
+import { MODULES as M } from '../core/index.js';
 const paths = {
   frame: 'M3 3h18v18H3z M7 3v4H3m14-4v4h4M3 17h4v4m10 0v-4h4',
   cabinet: 'M4 5h16v15H4z M4 12h16M12 5v15m-3-8v3m6-3v3M6 20v2m12-2v2',

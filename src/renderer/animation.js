@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { position } from '../model/index.js';
+import { position } from '../core/index.js';
 
 export function createAnimation(ctx) {
   const clock = new THREE.Clock();

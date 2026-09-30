@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/OrbitControls.js';
-import { ORIGIN, PITCH } from '../model/index.js';
-import { cube } from './primitives.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ORIGIN, PITCH } from '../core/index.js';
+import { cube } from '../geometry/primitives.js';
 
 export function createEnvironment(ctx, stage, options = {}) {
   let wallMat, floorMat;

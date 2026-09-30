@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { MODULES as M, clone } from './model/index.js';
+import { useCallback, useEffect, useState } from 'react';
+import { usePlanner } from './hooks/usePlanner.js';
+import { MODULES as M, clone } from './core/index.js';
 import { Catalog } from './components/Catalog.jsx';
 import { Inspector } from './components/Inspector.jsx';
 import { Stage } from './components/Stage.jsx';
@@ -14,11 +15,7 @@ export function download(url, name) {
   a.click();
 }
 export default function App({ store }) {
-  const state = useSyncExternalStore(
-    store.subscribe,
-    store.getSnapshot,
-    store.getSnapshot,
-  );
+  const state = usePlanner(store);
   const [activePanel, setActivePanel] = useState(null);
   const [showRenders, setShowRenders] = useState(false);
   const closeRenders = useCallback(() => setShowRenders(false), []);

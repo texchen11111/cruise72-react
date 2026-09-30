@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { PRESETS, EXHIBITIONS } from '../model/index.js';
-import { createPlannerScene } from '../scene/createPlannerScene.js';
-import { createFallbackPlanner } from '../scene/fallbackPlanner.js';
+import { PRESETS, EXHIBITIONS } from '../core/index.js';
+import { createPlannerScene } from '../renderer/createPlannerScene.js';
+import { createFallbackPlanner } from '../renderer/fallbackPlanner.js';
 export function Stage({ state, store, onDownload }) {
   const container = useRef(null),
     engine = useRef(null);

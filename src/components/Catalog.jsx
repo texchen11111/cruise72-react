@@ -1,4 +1,4 @@
-import { MODULES as M } from '../model/index.js';
+import { MODULES as M } from '../core/index.js';
 import { ModelPreview } from './ModelPreview.jsx';
 export function Catalog({ state, store }) {
   const families = ['全部', '梯柱', '节点', '拓展'];

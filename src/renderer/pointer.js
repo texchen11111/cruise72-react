@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { MODULES as M, ORIGIN, PITCH } from '../model/index.js';
-import { cells } from '../model/index.js';
+import { MODULES as M, ORIGIN, PITCH } from '../core/index.js';
+import { cells } from '../core/index.js';
 
 export function setupPointer(ctx, store) {
   const { listen, stage } = ctx;

@@ -1,4 +1,4 @@
-import { PRESETS, EXHIBITIONS, MODULES } from '../model/index.js';
+import { PRESETS, EXHIBITIONS, MODULES } from '../core/index.js';
 
 export function ScenePicker({ state, store }) {
   return (

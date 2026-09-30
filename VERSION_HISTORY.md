@@ -163,3 +163,13 @@
 - 实施方案三「格内吸附」：`rungSnapShiftMm` 对模块（含独立节点）做 y 向 minimax 微调（|s| ≤ 12.5 mm），渲染（`moduleGeometry.js`）与导出（`store/index.js` 的 `rungSnapShiftMm` / `anchor_world_mm`）同一来源；`clamp.js` 新增 `rungFirstCenterMm`。
 - 数据：全部预设/展陈 103 处挂点残差 worst 5.5 mm / avg 2.66 mm（下承托/上限位同值，左右列同行同值）；按占位钩口包络（高 7 mm、横档厚 4.8 mm、设计中心 15 mm）计算背钩-横档重叠 ≥ 2.0 mm，不脱钩；最终容许值待承托弧加工尺寸确认，列为未决项。
 - 测试：`tests/scene.mjs` 以吸附残差/微调量断言替换相位断言（残差 ≤ 5.5、微调 ≤ 12.5、覆盖 ≥ 100 挂点），模块位置断言含吸附微调。
+
+## V4.12 model/store 职责拆分与三层架构版
+
+- 日期：2026-09-30。
+- 源码按「纯逻辑 → 纯派生 → 运行时」重组为三层：原 `src/model/` 改名 `src/core/`（48 mm 领域规则，零 three 依赖，纯 Node 可测）；原 `src/scene/` 按副作用边界拆为 `src/geometry/`（`moduleGeometry.js`、`primitives.js`、`models/`，物品 → 三维网格的纯函数派生，只依赖 core + three）与 `src/renderer/`（`createPlannerScene.js`、`environment.js`、`materials.js`、`pointer.js`、`animation.js`、`fallbackPlanner.js`，渲染运行时）。依赖方向单向：`core ← geometry ← renderer`。
+- `src/core/index.js`（862 行）按职责拆为 `constants.js`（网格常量）、`modules.js`（MODULES 定义与派生属性，含全部后置覆盖，执行顺序不变）、`presets.js`（item / 梯柱列 / 展陈 / 预设）、`grid.js`（网格几何与 clone）、`assembly.js`（装配与对比），具体交互点收拢在 `mount/` 子目录：`mount/mounting.js`（父子与挂接规则）、`mount/rungs.js`（横档吸附与 mountingKey）、`mount/clamp.js`（夹持机械层）；`index.js` 仅保留 re-export，39 个导出名与拆分前逐一核对一致。
+- `src/store/index.js`（379 行）拆为 `layoutActions.js`（移动/添加/修补/缩放/切换/移除/复制）、`sceneActions.js`（预设/展陈切换与自动播放）、`exportData.js`（导出语义）；`index.js` 保留状态骨架与 uid/计时器管理，action 模块经 `{ getState, update, toast, changed }` 上下文注入，`createPlannerStore` 签名与返回 API 不变。
+- 新增 `src/hooks/usePlanner.js`：`App.jsx` 的 `useSyncExternalStore` 订阅逻辑抽成统一 hook；`src/services/` 维持预留空目录。
+- 零行为变更：纯路径移动与 import 更新，函数体一行未动；5 个测试文件只改路径字符串，逻辑未变，作为回归验证。
+- 验证：1003 项网格断言 + store / React DOM / 17 类 Three.js 几何 / 场景生命周期测试全部通过；生产构建通过。

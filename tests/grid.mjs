@@ -24,7 +24,7 @@ import {
   exhibitFrontMm,
   exhibitCenterMm,
   mountRole,
-} from '../src/model/index.js';
+} from '../src/core/index.js';
 let checks = 0;
 const ok = (v, m) => {
   assert.ok(v, m);
@@ -262,7 +262,7 @@ ok(mountRole(3, 3, 3) === 'lower-support', 'single row counts as support');
 {
   const sha = (p) => createHash('sha256').update(readFileSync(p)).digest('hex');
   const generated = sha('assets/rhino/generated/assembly.json'),
-    bundled = sha('src/scene/models/rhino/assembly.json');
+    bundled = sha('src/geometry/models/rhino/assembly.json');
   ok(generated === bundled, 'bundled assembly.json is byte-identical to the generated one');
   const manifest = JSON.parse(readFileSync('assets/rhino/manifest.json', 'utf8'));
   ok(

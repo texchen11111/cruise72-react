@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { ORIGIN, PITCH, envelope, position, cells, mountingKey } from '../model/index.js';
+import { ORIGIN, PITCH, envelope, position, cells, mountingKey } from '../core/index.js';
 import { createMaterials } from './materials.js';
-import { createModuleBuilder } from './moduleGeometry.js';
+import { createModuleBuilder } from '../geometry/moduleGeometry.js';
 import { createEnvironment } from './environment.js';
 import { setupPointer } from './pointer.js';
 import { createAnimation } from './animation.js';
