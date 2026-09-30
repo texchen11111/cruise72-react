@@ -147,6 +147,15 @@
 - 验证：608 项网格断言、store、React DOM、17 类 Three.js 几何与场景生命周期测试全部通过；生产构建通过；无头 Chrome 实拍透视图与正视图，确认节点与梯柱列重合、无重复轨条；Cloudflare Workers Builds 构建成功并上线。
 - 被本方案取代的 Codex 实验（`mounting.js` supportIds 方案）已归档到 `archive/mounting-experiment` 分支，仅供参考、不要合并；两个本地副本的分工约定见 README“两个本地副本与实验分支”。
 
+## V4.10 画布优先工作区版
+
+- 日期：2026-09-30（当日早于 V4.11，补记）。
+- 源码提交：`946afe6`。
+- 工作区改版为「画布优先」：左侧固定面板改为悬浮面板（HoverPanel）——左轨收纳模块库、预设场景、使用说明，右轨收纳设置与清单，面板可收起（Esc），三维画布获得最大视觉优先级。
+- 新增「场景效果图」弹层（RenderOverlay），从页头直接打开氛围渲染图；预设/展陈切换独立为 `ScenePicker.jsx` 组件，`Stage.jsx` 相应瘦身。
+- 新增 `src/styles/workspace.css`（662 行）与 `docs/canvas-workspace.md`；`tests/react.mjs` 增加悬浮面板与弹层的 DOM 交互测试（+107 行）。
+- 验证：1003 项网格断言、store、React DOM（含新交互）、17 类 Three.js 几何与场景生命周期测试全部通过。
+
 ## V4.11 连续横档梯柱网格版
 
 - 日期：2026-09-30。
@@ -168,8 +177,13 @@
 
 - 日期：2026-09-30。
 - 源码按「纯逻辑 → 纯派生 → 运行时」重组为三层：原 `src/model/` 改名 `src/core/`（48 mm 领域规则，零 three 依赖，纯 Node 可测）；原 `src/scene/` 按副作用边界拆为 `src/geometry/`（`moduleGeometry.js`、`primitives.js`、`models/`，物品 → 三维网格的纯函数派生，只依赖 core + three）与 `src/renderer/`（`createPlannerScene.js`、`environment.js`、`materials.js`、`pointer.js`、`animation.js`、`fallbackPlanner.js`，渲染运行时）。依赖方向单向：`core ← geometry ← renderer`。
-- `src/core/index.js`（862 行）按职责拆为 `constants.js`（网格常量）、`modules.js`（MODULES 定义与派生属性，含全部后置覆盖，执行顺序不变）、`presets.js`（item / 梯柱列 / 展陈 / 预设）、`grid.js`（网格几何与 clone）、`assembly.js`（装配与对比），具体交互点收拢在 `mount/` 子目录：`mount/mounting.js`（父子与挂接规则）、`mount/rungs.js`（横档吸附与 mountingKey）、`mount/clamp.js`（夹持机械层）；`index.js` 仅保留 re-export，39 个导出名与拆分前逐一核对一致。
+- `src/core/index.js`（862 行）按职责拆为 `constants.js`（网格常量）、`modules.js`（MODULES 定义与派生属性，含全部后置覆盖，执行顺序不变）、`scenes.js`（item / 梯柱列 / 展陈 / 预设，当日由 `presets.js` 改名，见下条）、`grid.js`（网格几何与 clone）、`assembly.js`（装配与对比），具体交互点收拢在 `mount/` 子目录：`mount/mounting.js`（父子与挂接规则）、`mount/rungs.js`（横档吸附与 mountingKey）、`mount/clamp.js`（夹持机械层）；`index.js` 仅保留 re-export，39 个导出名与拆分前逐一核对一致。
 - `src/store/index.js`（379 行）拆为 `layoutActions.js`（移动/添加/修补/缩放/切换/移除/复制）、`sceneActions.js`（预设/展陈切换与自动播放）、`exportData.js`（导出语义）；`index.js` 保留状态骨架与 uid/计时器管理，action 模块经 `{ getState, update, toast, changed }` 上下文注入，`createPlannerStore` 签名与返回 API 不变。
 - 新增 `src/hooks/usePlanner.js`：`App.jsx` 的 `useSyncExternalStore` 订阅逻辑抽成统一 hook；`src/services/` 维持预留空目录。
 - 零行为变更：纯路径移动与 import 更新，函数体一行未动；5 个测试文件只改路径字符串，逻辑未变，作为回归验证。
 - 验证：1003 项网格断言 + store / React DOM / 17 类 Three.js 几何 / 场景生命周期测试全部通过；生产构建通过。
+
+### V4.12 补充：scenes.js 改名与 V4.10 补记（2026-09-30 当日追加）
+
+- `src/core/presets.js` 改名 `scenes.js`：文件除 PRESETS 外还含 EXHIBITIONS、`item()`、`PILLAR_COLUMNS`（场景种子构建件），原名覆盖不全；导出名不变，外部零感知。
+- 补记 V4.10（画布优先工作区版，提交 `946afe6`）：当日 14:45 的工作区悬浮面板改版早于 V4.11，原记录缺失。
