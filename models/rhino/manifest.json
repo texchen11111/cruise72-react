@@ -1,18 +1,20 @@
 {
   "sourceFile": "梯柱 节点.3dm",
   "sourcePath": "models/rhino/source/ladder-node.3dm",
-  "sourceSha256": "449a9493f87fa6ee9ce69235a8588f824b5eaa693edd6334132513841e621850",
+  "sourceSha256": "0db9c004332097d70500ee5b60928ba23aba959595377c2b305ed672b9d91f0e",
   "method": "saved Rhino render meshes, no remodelling, no hardware scaling",
   "units": "mm",
   "toleranceMm": 0.01,
-  "partCount": 68,
+  "partCount": 93,
   "pillar": {
     "widthMm": 26.4,
     "depthMm": 28.8,
-    "segmentHeightMm": 720,
+    "segmentHeightMm": 600,
     "rungPitchMm": 25,
     "rungTopFirstMm": 74.9,
-    "rungCount": 24,
+    "rungCountPerSegment": 24,
+    "rungCountTotal": 48,
+    "rungContinuousAcrossSegments": true,
     "nodeCenterBelowUpperRungMm": 15
   },
   "node": {

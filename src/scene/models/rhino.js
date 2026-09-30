@@ -18,8 +18,28 @@ export const RHINO_V3 = {
     guideLengthMm: 30,
     maxOutwardTravelMm: 7,
   },
-  pillar: { widthMm: 26.4, depthMm: 28.8, segmentHeightMm: 720, rungPitchMm: 25 },
+  pillar: {
+    widthMm: 26.4, depthMm: 28.8, segmentHeightMm: 600, rungPitchMm: 25,
+    // 横档中心距段底 12.5 mm，全程 25 mm 连续（源文件两段 600 mm 顶点级周期重复）。
+    rungFirstCenterMm: 12.5, rungCountPerSegment: 24,
+    // 渲染相位：仅偏移横档（不偏移主轨，段间接轨不受影响）。48 mm 网格与
+    // 25 mm 档距互质，对全部预设节点行扫描 0–25 mm 后最优相位 12 mm，
+    // 使所有行锚点-横档中心误差 ≤ 4.5 mm（无相位时最差 11.5 mm）。
+    // 主轨不受此偏移；横档跨段保持 25 mm 连续（12.5+12+25k 对 600 取模后
+    // 首档中心 24.5 mm，段尾 599.5 mm，跨段间距仍为 25 mm）。
+    rungRenderPhaseMm: 12,
+  },
 };
+
+// 源文件含两段 600 mm 梯柱且顶点级周期重复（±0.0002 mm），渲染只取第一段
+// 的零件集（1 主轨 + 24 横档），按段高平铺，避免跨段横档重复实例化。
+const SEGMENT_Y_MAX_MM = 660; // 第一段网格 y ∈ [60, 660]
+const segmentPillarParts = assembly.parts.filter((p) => {
+  if (p.role !== 'pillar') return false;
+  let maxY = -Infinity;
+  for (let i = 1; i < p.positions.length; i += 3) maxY = Math.max(maxY, p.positions[i]);
+  return maxY <= SEGMENT_Y_MAX_MM;
+});
 
 // 网格模板只建一次，全部实例共享；dispose 时通过 userData.rhinoShared 跳过。
 const geometryCache = new Map();
@@ -39,6 +59,13 @@ function partGeometry(part) {
 
 const partsByRole = (role) => assembly.parts.filter((p) => p.role === role);
 
+// 梯柱主轨是 z 向贯通件（z 跨度 > 10 mm），横档为短件；同一判据同时用于
+// 材质（轨银/档深）和渲染相位（只偏移横档，不偏移主轨）。
+function isRailPart(part) {
+  const zs = part.positions.filter((_, i) => i % 3 === 2);
+  return Math.max(...zs) - Math.min(...zs) > 10;
+}
+
 function materialForPart(part, mats) {
   if (part.role === 'backplate') return mats.dark;
   if (part.role === 'cartridge') return mats.orange;
@@ -49,8 +76,7 @@ function materialForPart(part, mats) {
     // 不能用与展板同色的白。
     return mats.blue;
   }
-  // 梯柱：主轨银色，横档深色。
-  return part.name === 'ladder-part-24' ? mats.silver : mats.dark;
+  return isRailPart(part) ? mats.silver : mats.dark;
 }
 
 function addRoleMeshes(parent, role, mats) {
@@ -61,17 +87,25 @@ function addRoleMeshes(parent, role, mats) {
   }
 }
 
-// 梯柱：Rhino 段高 720 mm，按模块高度向上堆叠到覆盖包络；从包络底面起算，
-// 顶段允许超出包络（通长到顶），工程尺寸不做缩放。
+// 梯柱：Rhino 段高 600 mm（源文件两段周期重复），按模块高度向上堆叠覆盖包络；
+// 从包络底面起算，顶段允许超出包络（通长到顶），工程尺寸不做缩放。
 export function buildRhinoPillar(g, hMeters, mats) {
   const segmentHeight = RHINO_V3.pillar.segmentHeightMm * MM;
   const count = Math.max(1, Math.ceil(hMeters / segmentHeight));
   const bottom = -hMeters / 2;
   for (let i = 0; i < count; i++) {
     const segment = new THREE.Group();
-    // 导出网格在段内 y ∈ [60, 660] mm：把段底对齐到 stackBottom + i*段高。
+    // 段内网格 y ∈ [60, 660] mm：把段底对齐到 stackBottom + i*段高。
     segment.position.y = bottom + i * segmentHeight - 60 * MM;
-    addRoleMeshes(segment, 'pillar', mats);
+    for (const part of segmentPillarParts) {
+      const mesh = new THREE.Mesh(partGeometry(part), materialForPart(part, mats));
+      // 横档施加渲染相位；主轨保持原位保证段间接轨。
+      if (part.role === 'pillar' && !isRailPart(part)) {
+        mesh.position.y = RHINO_V3.pillar.rungRenderPhaseMm * MM;
+      }
+      mesh.userData.rhinoPart = part.name;
+      segment.add(mesh);
+    }
     g.add(segment);
   }
 }

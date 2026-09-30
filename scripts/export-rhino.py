@@ -45,8 +45,14 @@ def meshes(geometry):
 
 
 parts = []
+skipped = []
 for index, obj in enumerate(doc.Objects):
     layer = doc.Layers[obj.Attributes.LayerIndex].Name
+    name = obj.Attributes.Name or f'ladder-part-{index}'
+    # Annotation objects (dimensions, text) carry no render mesh; skip them.
+    if isinstance(obj.Geometry, rhino.AnnotationBase):
+        skipped.append(name)
+        continue
     name = obj.Attributes.Name or f'ladder-part-{index}'
     if layer == '默认':
         role = 'pillar'
@@ -77,7 +83,9 @@ for index, obj in enumerate(doc.Objects):
         'positions': positions, 'normals': normals, 'indices': indices,
     })
 
-assert len(parts) == 68, 'This exporter expects the reviewed 68-part assembly'
+if skipped:
+    print(json.dumps({'skippedAnnotations': skipped}))
+
 manifest = {
     'sourceFile': '梯柱 节点.3dm',
     'sourcePath': 'models/rhino/source/ladder-node.3dm',
@@ -86,8 +94,12 @@ manifest = {
     'units': 'mm', 'toleranceMm': doc.Settings.ModelAbsoluteTolerance,
     'partCount': len(parts),
     'pillar': {
-        'widthMm': 26.4, 'depthMm': 28.8, 'segmentHeightMm': 720,
-        'rungPitchMm': 25, 'rungTopFirstMm': 74.9, 'rungCount': 24,
+        # 源文件含两段 600 mm 梯柱（y 60..660 / 660..1260，顶点级周期重复），
+        # 每段 = 1 根主轨 + 24 根横档；横档全程 25 mm 连续间距，跨段无断档。
+        'widthMm': 26.4, 'depthMm': 28.8, 'segmentHeightMm': 600,
+        'rungPitchMm': 25, 'rungTopFirstMm': 74.9,
+        'rungCountPerSegment': 24, 'rungCountTotal': 48,
+        'rungContinuousAcrossSegments': True,
         'nodeCenterBelowUpperRungMm': 15,
     },
     'node': {

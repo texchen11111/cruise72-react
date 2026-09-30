@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import path from 'node:path';
-import { MODULES, position } from '../src/model/index.js';
+import { MODULES, position, EXHIBITIONS, PRESETS, cells } from '../src/model/index.js';
 
 // Exercise real Three.js geometry and animation without requiring a GPU.
 const result = await build({
@@ -12,6 +12,7 @@ const result = await build({
       export {createModuleBuilder} from './src/scene/moduleGeometry.js';
       export {createAnimation} from './src/scene/animation.js';
       export {setupPointer} from './src/scene/pointer.js';
+      export {RHINO_V3} from './src/scene/models/rhino.js';
     `,
     resolveDir: process.cwd(),
   },
@@ -20,7 +21,7 @@ const result = await build({
   write: false,
   alias: { three: path.resolve('vendor/three.module.js') },
 });
-const { THREE, createMaterials, createModuleBuilder, createAnimation, setupPointer } = await import(
+const { THREE, createMaterials, createModuleBuilder, createAnimation, setupPointer, RHINO_V3 } = await import(
   'data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64')
 );
 
@@ -99,6 +100,31 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
   });
   assert.ok(pillarMeshes >= 25, 'pillar renders the Rhino part set across stacked segments');
   assert.ok(pillarTris > 2000, 'pillar triangle budget comes from the real ladder mesh');
+
+  // 横档渲染相位：48 mm 网格锚点与 25 mm 档距互质，扫描 0–25 mm 后相位 12 mm
+  // 使全部预设节点行锚点-横档中心误差 ≤ 4.5 mm（无相位时差 11.5 mm）。
+  {
+    const rows = new Set();
+    for (const ex of [...EXHIBITIONS, ...PRESETS]) {
+      for (const it of ex.items) {
+        if (it.type === 'panel') {
+          const [, h] = cells(it);
+          rows.add(it.gy);
+          rows.add(it.gy + h - 1);
+        } else if (it.type === 'node') rows.add(it.gy);
+      }
+    }
+    const phase = RHINO_V3.pillar.rungRenderPhaseMm ?? 0;
+    const err = (gy) => {
+      const target = 24 + 48 * gy - phase - RHINO_V3.pillar.rungFirstCenterMm;
+      return Math.abs(25 * Math.round(target / 25) - target);
+    };
+    const worst = Math.max(...[...rows].map(err));
+    assert.ok(
+      worst <= 6,
+      `rung render phase keeps anchor-rung error bounded (worst ${worst.toFixed(2)} mm)`,
+    );
+  }
   const block = ctx.models.get('block');
   let blockSlider = false;
   block.traverse((o) => {

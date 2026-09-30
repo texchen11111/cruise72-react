@@ -269,5 +269,9 @@ ok(mountRole(3, 3, 3) === 'lower-support', 'single row counts as support');
     sha(manifest.sourcePath) === manifest.sourceSha256,
     'models/rhino/source 3dm matches the hash recorded in manifest.json',
   );
+  ok(
+    manifest.pillar.segmentHeightMm === 600 && manifest.pillar.rungContinuousAcrossSegments === true,
+    'manifest records the 600 mm segment with continuous 25 mm rung pitch',
+  );
 }
 console.log(checks + ' grid assertions passed; all space and exhibition presets valid.');
