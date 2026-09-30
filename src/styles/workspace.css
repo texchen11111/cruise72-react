@@ -1,0 +1,662 @@
+/* Canvas workspace: UI overlays do not change the renderer's dimensions. */
+.canvas-app {
+  height: 100dvh;
+  min-height: 400px;
+  overflow: hidden;
+  background: #e9e7e1;
+  --panel-shadow: 0 12px 48px #27302f1a, 0 2px 8px #27302f08;
+}
+.canvas-app .workspace-header {
+  position: relative;
+  z-index: 30;
+  height: 64px;
+  padding: 0 26px;
+  gap: 18px;
+  background: #fafaf8;
+  border-bottom: 1px solid #deded7;
+}
+.canvas-app .brand {
+  font-size: 29px;
+}
+.canvas-app .headtitle {
+  font-size: 15px;
+}
+.canvas-app .headtitle small {
+  font-size: 12px;
+  margin-top: 3px;
+}
+.canvas-app .headlinks {
+  gap: 12px;
+}
+.canvas-app .headlinks button {
+  font-size: 14px;
+  padding: 9px 14px;
+}
+.canvas-app .render-toggle {
+  background: transparent;
+  border-color: transparent;
+}
+.canvas-app .export {
+  border-radius: 6px;
+}
+.canvas-app .planner-section {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.canvas-app .workspace {
+  position: relative;
+  display: block;
+  height: calc(100dvh - 64px);
+  min-height: 336px;
+  border: 0;
+  isolation: isolate;
+}
+.canvas-app .center,
+.canvas-app .center .stage {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+}
+.canvas-app .center .stage {
+  flex: none;
+}
+.canvas-app .stagebar {
+  top: 26px;
+  left: 102px;
+  right: 102px;
+}
+.canvas-app .stagecaption strong {
+  font-size: 21px;
+  margin-bottom: 4px;
+}
+.canvas-app .stagecaption {
+  font-size: 12px;
+}
+.canvas-app .viewtabs {
+  border-radius: 20px;
+  padding: 4px;
+  box-shadow: 0 1px 10px #00000005;
+}
+.canvas-app .viewtabs button {
+  border-radius: 16px;
+  padding: 7px 15px;
+  font-size: 14px;
+}
+.canvas-app .tools {
+  bottom: 26px;
+  left: 26px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.canvas-app .tools button {
+  padding: 10px 14px;
+  font-size: 14px;
+}
+.canvas-app .toast {
+  bottom: 84px;
+  z-index: 25;
+}
+.canvas-app .loaderror {
+  top: auto;
+  bottom: 80px;
+  max-height: 90px;
+  overflow: auto;
+}
+.workspace-status {
+  position: absolute;
+  bottom: 36px;
+  right: 26px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #66675f;
+  pointer-events: none;
+}
+.status-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3158e8;
+  margin-right: 7px;
+}
+.workspace-rail {
+  position: absolute;
+  top: 120px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rail-left {
+  left: 22px;
+}
+.rail-right {
+  right: 22px;
+}
+.hover-panel {
+  position: relative;
+}
+.rail-trigger {
+  display: flex;
+  width: 58px;
+  min-height: 68px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 6px;
+  border: 1px solid #fff9;
+  border-radius: 11px;
+  background: #fafaf6e6;
+  box-shadow: 0 2px 12px #2a352609;
+  backdrop-filter: blur(12px);
+  font-size: 14px;
+}
+.rail-trigger svg {
+  width: 21px;
+  height: 21px;
+}
+.rail-trigger.is-active {
+  background: #fff;
+  color: var(--blue);
+  border-color: #b5c2f7;
+}
+.floating-panel {
+  position: absolute;
+  top: 0;
+  left: 72px;
+  width: 350px;
+  max-height: calc(100dvh - 230px);
+  background: #fdfdfb;
+  border: 1px solid #dddeda;
+  border-radius: 13px;
+  box-shadow: var(--panel-shadow);
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+}
+.floating-panel[hidden] {
+  display: none;
+}
+/* Invisible bridge keeps hover continuous between the trigger and the panel. */
+.floating-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 15px;
+  left: -15px;
+}
+.panel-right .floating-panel {
+  left: auto;
+  right: 72px;
+  width: 366px;
+}
+.panel-right .floating-panel::before {
+  left: auto;
+  right: -15px;
+}
+#scenarios-panel {
+  top: -80px;
+  width: 390px;
+}
+#guide-panel {
+  top: -160px;
+}
+.floating-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e8e9e4;
+}
+.panel-eyebrow {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  color: #82867e;
+}
+.floating-panel-heading h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 6px 0 0;
+}
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.panel-actions button {
+  padding: 5px 7px;
+  border: 0;
+  background: transparent;
+}
+.panel-actions button:last-child {
+  font-size: 24px;
+  line-height: 1;
+}
+.panel-actions .panel-pin {
+  font-size: 12px;
+}
+.panel-pin[aria-pressed='true'] {
+  color: var(--blue);
+  background: #edf1ff;
+}
+.floating-panel-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 0 0 13px 13px;
+}
+.canvas-app .catalog {
+  width: auto;
+  border: 0;
+  padding: 0 20px 20px;
+  overflow: visible;
+}
+.canvas-app .catalog > h2 {
+  display: none;
+}
+.canvas-app .catalog .filter {
+  margin: 16px 0;
+}
+.canvas-app .cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 14px;
+}
+.canvas-app .card {
+  min-width: 0;
+}
+.canvas-app .model-preview {
+  aspect-ratio: 1.2;
+}
+.canvas-app .card strong {
+  font-size: 14px;
+}
+.canvas-app .inspector {
+  display: block;
+  width: auto;
+  min-width: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+}
+.canvas-app .righttabs {
+  display: flex;
+  padding: 12px 16px 0;
+  gap: 8px;
+}
+.canvas-app .righttabs button {
+  font-size: 14px;
+  flex: 1;
+  padding: 10px 4px;
+}
+.canvas-app .detail {
+  padding: 20px;
+  overflow: visible;
+}
+.canvas-app .modtitle h2 {
+  font-size: 22px;
+}
+.canvas-app .scenes {
+  padding: 18px 20px;
+  border: 0;
+  background: transparent;
+}
+.canvas-app .sceneshead {
+  display: block;
+  margin-bottom: 14px;
+}
+.canvas-app .sceneshead h2 {
+  display: none;
+}
+.canvas-app .play {
+  padding: 8px 10px;
+  font-size: 14px;
+  width: 100%;
+}
+.canvas-app .scenegrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border: 0;
+}
+.canvas-app .scene {
+  border: 1px solid #e3e5de;
+  border-radius: 7px;
+  padding: 14px 10px;
+  background: #fff;
+  text-align: left;
+}
+.canvas-app .scene.active {
+  border-color: #94a7eb;
+  background: #eff3ff;
+}
+.canvas-app .scene b {
+  font-size: 14px;
+}
+.canvas-app .scene small {
+  font-size: 12px;
+}
+.canvas-app .exhibition-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.canvas-app .exhibition-tabs button {
+  padding: 10px;
+  border-radius: 7px;
+}
+.canvas-app .exhibition-label b {
+  font-size: 14px;
+}
+.canvas-app .scenedesc {
+  font-size: 14px;
+  line-height: 1.8;
+  margin-top: 16px;
+}
+.canvas-app .node-summary {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.workspace-guide {
+  padding: 0 20px 20px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.workspace-guide dt {
+  margin-top: 18px;
+  font-weight: 600;
+}
+.workspace-guide dd {
+  margin: 3px 0 0;
+  color: #6e736c;
+}
+.workspace-footnote {
+  padding-top: 14px;
+  border-top: 1px solid #e4e5df;
+  font-size: 12px;
+  color: #71776b;
+}
+.render-overlay {
+  width: min(1120px, calc(100vw - 160px));
+  height: min(820px, calc(100dvh - 120px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  margin: auto;
+  border: 1px solid #ffffffb3;
+  border-radius: 14px;
+  background: #fdfdfb;
+  box-shadow: 0 24px 90px #1c292945;
+  color: var(--ink);
+}
+.render-overlay::backdrop {
+  background: #222b2e33;
+  backdrop-filter: blur(3px);
+}
+.render-frame {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.render-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px;
+}
+.render-heading h2 {
+  margin: 5px 0 0;
+  font-size: 22px;
+  font-weight: 400;
+}
+.render-close {
+  background: transparent;
+  font-size: 14px;
+}
+.render-image {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eaeae4;
+}
+.render-image > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.render-image > button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #fffffff0;
+  border: 0;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+.render-prev {
+  left: 16px;
+}
+.render-next {
+  right: 16px;
+}
+.render-counter {
+  position: absolute;
+  bottom: 12px;
+  right: 18px;
+  padding: 4px 9px;
+  background: #ffffffdf;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.render-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 24px;
+}
+.render-thumbnails {
+  display: flex;
+  gap: 10px;
+}
+.render-thumbnails button {
+  width: 92px;
+  padding: 3px;
+  border-radius: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+}
+.render-thumbnails button[aria-pressed='true'] {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.render-thumbnails img {
+  width: 100%;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 2px;
+  display: block;
+}
+.render-thumbnails span {
+  display: block;
+  font-size: 12px;
+  margin: 6px 0 2px;
+}
+.render-footer p {
+  color: #74796e;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: right;
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .canvas-app .workspace-header {
+    height: 60px;
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .canvas-app .headtitle {
+    font-size: 14px;
+  }
+  .canvas-app .headtitle small {
+    display: none;
+  }
+  .canvas-app .headlinks {
+    gap: 2px;
+  }
+  .canvas-app .headlinks button {
+    padding: 9px 8px;
+    font-size: 12px;
+  }
+  .canvas-app .brand {
+    font-size: 26px;
+  }
+  .canvas-app .workspace {
+    height: calc(100dvh - 60px);
+  }
+  .canvas-app .stagebar {
+    left: 18px;
+    right: 18px;
+    top: 16px;
+  }
+  .canvas-app .stagecaption strong {
+    font-size: 16px;
+  }
+  .canvas-app .viewtabs button {
+    font-size: 12px;
+    padding: 6px 9px;
+  }
+  .workspace-rail {
+    top: 102px;
+    gap: 10px;
+  }
+  .rail-left {
+    left: 10px;
+  }
+  .rail-right {
+    right: 10px;
+  }
+  .rail-trigger {
+    width: 48px;
+    min-height: 58px;
+    gap: 5px;
+    font-size: 12px;
+  }
+  .rail-trigger svg {
+    width: 19px;
+    height: 19px;
+  }
+  .hover-panel {
+    position: static;
+  }
+  .floating-panel,
+  #scenarios-panel,
+  #guide-panel,
+  .panel-right .floating-panel {
+    position: fixed;
+    top: 148px;
+    left: 68px;
+    right: 10px;
+    width: auto;
+    max-height: calc(100dvh - 218px);
+  }
+  .rail-right:has(.floating-panel:not([hidden])) {
+    z-index: 24;
+  }
+  .rail-left:has(.floating-panel:not([hidden])) {
+    z-index: 24;
+  }
+  .floating-panel-heading {
+    padding: 14px;
+  }
+  .floating-panel-heading h2 {
+    font-size: 18px;
+  }
+  .canvas-app .catalog {
+    padding: 0 14px 16px;
+  }
+  .canvas-app .detail {
+    padding: 16px;
+  }
+  .canvas-app .tools {
+    bottom: 16px;
+    left: 12px;
+  }
+  .canvas-app .tools button {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .workspace-status {
+    display: none;
+  }
+  .render-overlay {
+    width: calc(100vw - 20px);
+    height: calc(100dvh - 100px);
+  }
+  .render-heading {
+    padding: 14px;
+  }
+  .render-heading h2 {
+    font-size: 18px;
+  }
+  .render-close {
+    font-size: 12px;
+    padding: 8px;
+  }
+  .render-footer {
+    padding: 12px;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .render-thumbnails {
+    width: 100%;
+    gap: 4px;
+  }
+  .render-thumbnails button {
+    flex: 1;
+    width: 0;
+  }
+  .render-thumbnails span {
+    font-size: 12px;
+  }
+  .render-footer p {
+    text-align: center;
+    font-size: 12px;
+  }
+}
+@media (max-height: 620px) and (min-width: 701px) {
+  .workspace-rail {
+    top: 80px;
+    gap: 8px;
+  }
+  .floating-panel {
+    max-height: calc(100dvh - 166px);
+  }
+  #scenarios-panel {
+    top: -76px;
+  }
+  #guide-panel {
+    top: -152px;
+  }
+}
+
+/* Keep export available on touch layouts as well as desktop. */
+.canvas-app .workspace-header .export {
+  display: inline-flex;
+  white-space: nowrap;
+}
