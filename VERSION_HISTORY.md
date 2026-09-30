@@ -187,3 +187,4 @@
 
 - `src/core/presets.js` 改名 `scenes.js`：文件除 PRESETS 外还含 EXHIBITIONS、`item()`、`PILLAR_COLUMNS`（场景种子构建件），原名覆盖不全；导出名不变，外部零感知。
 - 补记 V4.10（画布优先工作区版，提交 `946afe6`）：当日 14:45 的工作区悬浮面板改版早于 V4.11，原记录缺失。
+- `dist/` 移出版本库（入 `.gitignore`）：构建产物可由源码完全复现（`npm ci && npm test && npm run build`，含 `public/scenes` 资源复制），两条部署通道（`.openai/hosting.json` 静态目录、`wrangler.jsonc` assets）均读本地 dist、不依赖 git；消除 hash 文件名提交噪音与"dist 与源码失配"风险。
