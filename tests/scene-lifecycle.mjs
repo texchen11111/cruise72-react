@@ -3,7 +3,14 @@ import { build } from 'esbuild';
 import { JSDOM } from 'jsdom';
 import path from 'node:path';
 import { createPlannerStore } from '../src/store/index.js';
-import { mountPoints, ORIGIN, PITCH } from '../src/core/index.js';
+import {
+  GRID,
+  mountPoints,
+  ORIGIN,
+  PITCH,
+  rungSnapShiftMm,
+} from '../src/core/index.js';
+import { createFallbackPlanner } from '../src/renderer/fallbackPlanner.js';
 
 // Run the real scene/environment orchestration; replace only GPU operations.
 const dom = new JSDOM('<!doctype html><div id="stage"></div>');
@@ -18,7 +25,8 @@ dom.window.HTMLCanvasElement.prototype.getContext = () => ({
   lineTo() {},
   stroke() {},
 });
-dom.window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,test';
+dom.window.HTMLCanvasElement.prototype.toDataURL = () =>
+  'data:image/png;base64,test';
 const frames = new Map();
 globalThis.requestAnimationFrame = (fn) => {
   frames.set(1, fn);
@@ -44,16 +52,24 @@ const result = await build({
     {
       name: 'gpu-boundary',
       setup(build) {
-        build.onResolve({ filter: /^three$/ }, () => ({ path: 'three', namespace: 'gpu' }));
-        build.onResolve({ filter: /^three\/addons\/controls\/OrbitControls\.js$/ }, () => ({
-          path: 'orbit',
+        build.onResolve({ filter: /^three$/ }, () => ({
+          path: 'three',
           namespace: 'gpu',
         }));
-        build.onLoad({ filter: /.*/, namespace: 'gpu' }, ({ path: modulePath }) => ({
-          resolveDir: process.cwd(),
-          contents:
-            modulePath === 'orbit'
-              ? `
+        build.onResolve(
+          { filter: /^three\/addons\/controls\/OrbitControls\.js$/ },
+          () => ({
+            path: 'orbit',
+            namespace: 'gpu',
+          }),
+        );
+        build.onLoad(
+          { filter: /.*/, namespace: 'gpu' },
+          ({ path: modulePath }) => ({
+            resolveDir: process.cwd(),
+            contents:
+              modulePath === 'orbit'
+                ? `
           import { Vector3 } from ${JSON.stringify(path.resolve('node_modules/three/build/three.module.js'))};
           export class OrbitControls {
             target = new Vector3();
@@ -61,7 +77,7 @@ const result = await build({
             dispose() {}
           }
         `
-              : `
+                : `
           export * from ${JSON.stringify(path.resolve('node_modules/three/build/three.module.js'))};
           import { Texture } from ${JSON.stringify(path.resolve('node_modules/three/build/three.module.js'))};
           export class WebGLRenderer {
@@ -82,13 +98,15 @@ const result = await build({
             dispose() {}
           }
         `,
-        }));
+          }),
+        );
       },
     },
   ],
 });
 const { createPlannerScene, generatePreview } = await import(
-  'data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64')
+  'data:text/javascript;base64,' +
+    Buffer.from(result.outputFiles[0].text).toString('base64')
 );
 const stage = document.getElementById('stage');
 Object.defineProperties(stage, {
@@ -104,6 +122,18 @@ try {
   assert.fail(`Scene initialization failed: ${error.message}`);
 }
 const renderer = globalThis.__renderer;
+assert.equal(PITCH, 0.05);
+assert.deepEqual(ORIGIN, [-1.45, 0.01, 0]);
+const gridLines = renderer.scene.children.find((g) =>
+  g.children.some((o) => o.isLineSegments && o.material.opacity === 0.13),
+).children[0];
+const gridPositions = gridLines.geometry.attributes.position;
+assert.equal(gridPositions.count, ((58 + 1) * 3 + 24 + 1) * 2);
+const gridX = Array.from({ length: gridPositions.count }, (_, i) =>
+  gridPositions.getX(i),
+);
+assert.ok(Math.abs(Math.min(...gridX) + 1.45) < 1e-6);
+assert.ok(Math.abs(Math.max(...gridX) - 1.45) < 1e-6);
 assert.equal(stage.querySelectorAll('canvas').length, 1);
 assert.ok(observing);
 assert.equal(frames.size, 1);
@@ -132,8 +162,12 @@ const assertMountGeometry = () => {
     const point = expected.find((p) => p.id === object.userData.mountPoint.id);
     assert.ok(point);
     const world = object.getWorldPosition(object.position.clone());
+    const owner = data.find((a) => a.id === point.owner_id);
+    const shift = rungSnapShiftMm(owner, data) * 0.001;
     assert.ok(Math.abs(world.x - ORIGIN[0] - (point.gx + 0.5) * PITCH) < 1e-9);
-    assert.ok(Math.abs(world.y - ORIGIN[1] - (point.gy + 0.5) * PITCH) < 1e-9);
+    assert.ok(
+      Math.abs(world.y - ORIGIN[1] - (point.gy + 0.5) * PITCH - shift) < 1e-9,
+    );
     assert.ok(Math.abs(world.z - (point.gz * PITCH + 0.024)) < 1e-9);
   }
 };
@@ -149,20 +183,26 @@ assertMountGeometry();
 const slidersOf = (ownerId) => {
   const found = [];
   renderer.scene.traverse((object) => {
-    if (object.userData.slider && object.userData.slider.ownerId === ownerId) found.push(object);
+    if (object.userData.slider && object.userData.slider.ownerId === ownerId)
+      found.push(object);
   });
   return found;
 };
 const mechanismsOf = (ownerId) => {
   const found = [];
   renderer.scene.traverse((object) => {
-    if (object.userData.mechanism && object.userData.mechanism.ownerId === ownerId)
+    if (
+      object.userData.mechanism &&
+      object.userData.mechanism.ownerId === ownerId
+    )
       found.push(object);
   });
   return found;
 };
 {
-  const upper = mechanismsOf('a').filter((m) => m.userData.mechanism.role === 'upper-limit');
+  const upper = mechanismsOf('a').filter(
+    (m) => m.userData.mechanism.role === 'upper-limit',
+  );
   assert.equal(upper.length, 2, 'panel top row renders two upper-limit nodes');
   assert.ok(
     upper.every((m) => m.rotation.z === Math.PI),
@@ -200,7 +240,9 @@ const mechanismsOf = (ownerId) => {
   if (lampSliders.length)
     assert.ok(
       lampSliders.every(
-        (s) => Math.abs(s.position.z + 0.007) < 1e-9 && s.userData.slider.retract === true,
+        (s) =>
+          Math.abs(s.position.z + 0.007) < 1e-9 &&
+          s.userData.slider.retract === true,
       ),
       'non-exhibit derived nodes keep the slider fully retracted',
     );
@@ -222,10 +264,37 @@ assert.match(generatePreview(store.getSnapshot().items), /^data:image\/png/);
 assert.equal(globalThis.__renderer.contextLost, true);
 assert.equal(document.querySelectorAll('canvas').length, 0);
 globalThis.__gpuFailure = new Error('WebGL context unavailable');
-assert.throws(() => createPlannerScene(stage, store), /WebGL context unavailable/);
+assert.throws(
+  () => createPlannerScene(stage, store),
+  /WebGL context unavailable/,
+);
 assert.equal(stage.querySelectorAll('canvas').length, 0);
 assert.equal(frames.size, 0);
 delete globalThis.__gpuFailure;
+// 平面截图必须使用当前格数归一化，58 格仍占满 600 px 画面。
+const fullWall = {
+  id: 'full-wall',
+  type: 'panel',
+  gx: 0,
+  gy: 0,
+  gz: 0,
+  sizeCells: [...GRID.slice(0, 2), 1],
+};
+const fallback = createFallbackPlanner(stage, {
+  getSnapshot: () => ({ items: [fullWall] }),
+  subscribe: () => () => {},
+  select() {},
+});
+assert.match(
+  stage.querySelector('.fallback-module').title,
+  /2900 × 2900 × 50 mm/,
+);
+const svg = decodeURIComponent(fallback.snapshot().split(',')[1]);
+assert.match(svg, /x="0" y="0" width="600" height="600"/);
+fallback.destroy();
+assert.equal(stage.children.length, 0);
 store.destroy();
 dom.window.close();
-console.log('Scene lifecycle: real initialization, resize handles, preview and cleanup passed.');
+console.log(
+  'Scene lifecycle: real initialization, resize handles, preview and cleanup passed.',
+);

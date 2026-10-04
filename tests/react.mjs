@@ -96,14 +96,12 @@ try {
   await click('[aria-label="下一张效果图"]');
   assert.match(document.querySelector('.render-image img').src, /shelves/);
   await act(() => {
-    document
-      .querySelector('.render-overlay')
-      .dispatchEvent(
-        new window.KeyboardEvent('keydown', {
-          key: 'ArrowRight',
-          bubbles: true,
-        }),
-      );
+    document.querySelector('.render-overlay').dispatchEvent(
+      new window.KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        bubbles: true,
+      }),
+    );
   });
   assert.match(document.querySelector('.render-image img').src, /reading/);
   assert.equal(JSON.stringify(store.getSnapshot().items), savedItems);
@@ -172,7 +170,7 @@ try {
   await click('[data-tab="list"]');
   await click('[data-select="r1"]');
   assert.ok(
-    document.querySelector('.assembly-spec').textContent.includes('48 mm'),
+    document.querySelector('.assembly-spec').textContent.includes('50 mm'),
   );
   await click('#toggleState');
   assert.equal(document.querySelector('#toggleState').textContent, '已取阅');

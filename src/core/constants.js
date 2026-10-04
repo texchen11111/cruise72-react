@@ -1,3 +1,3 @@
-export const PITCH = 0.048,
-  GRID = [60, 60, 24],
-  ORIGIN = [-1.44, 0.01, 0];
+export const PITCH = 0.05,
+  GRID = [58, 58, 24],
+  ORIGIN = [-1.45, 0.01, 0];

@@ -6,6 +6,8 @@ import {
   PRESETS,
   EXHIBITIONS,
   GRID,
+  PITCH,
+  ORIGIN,
   cells,
   valid,
   position,
@@ -24,12 +26,21 @@ import {
   exhibitFrontMm,
   exhibitCenterMm,
   mountRole,
+  mountRungResidualsMm,
+  rungSnapShiftMm,
 } from '../src/core/index.js';
 let checks = 0;
 const ok = (v, m) => {
   assert.ok(v, m);
   checks++;
 };
+assert.equal(PITCH, 0.05);
+assert.deepEqual(GRID, [58, 58, 24]);
+assert.deepEqual(ORIGIN, [-1.45, 0.01, 0]);
+assert.deepEqual(M.panel.cells, [14, 11, 1]);
+assert.ok(Math.abs(M.panel.w - 0.7) < 1e-9);
+assert.ok(Math.abs(M.panel.h - 0.55) < 1e-9);
+assert.ok(Math.abs(M.pillar.h - 2.4) < 1e-9);
 for (const p of [...PRESETS, ...EXHIBITIONS])
   for (const a of p.items) {
     ok(valid(a), p.id + ' bounds ' + a.id);
@@ -44,7 +55,10 @@ for (const [i, k] of ['gx', 'gy', 'gz'].entries()) {
   const overlap = { ...a, id: 'b' };
   ok(conflict(overlap, [a]), 'overlap ' + k);
   const moved = { ...a, [k]: a[k] + 1 };
-  ok(Math.abs(position(moved)[i] - position(a)[i] - 0.048) < 1e-10, '48mm movement ' + k);
+  ok(
+    Math.abs(position(moved)[i] - position(a)[i] - 0.05) < 1e-10,
+    '50mm movement ' + k,
+  );
   ok(!valid({ ...a, [k]: GRID[i] }), 'outside ' + k);
   ok(!valid({ ...a, [k]: -1 }), 'negative ' + k);
   ok(!valid({ ...a, [k]: 1.5 }), 'fraction ' + k);
@@ -87,15 +101,16 @@ ok(
 );
 ok(conflict(pil('q', 3), [p3]), 'pillars still exclude each other');
 // 派生挂接点：概念节点落在梯柱列上，由父子关系派生，不作为独立 item。
-const panelM = { id: 'm', type: 'panel', gx: 3, gy: 10, gz: 0, state: 0 };
+const panelM = { id: 'm', type: 'panel', gx: 4, gy: 10, gz: 0, state: 0 };
 const pts = mountPoints(panelM, allP);
 ok(pts.length === 4, 'panel derives four mount points');
 ok(
-  pts.every((q) => [3, 18].includes(q.gx)) && new Set(pts.map((q) => q.gx)).size === 2,
+  pts.every((q) => [3, 18].includes(q.gx)) &&
+    new Set(pts.map((q) => q.gx)).size === 2,
   'corner points sit on both spanned pillar columns',
 );
 ok(
-  pts.every((q) => q.gy === 10 || q.gy === 21),
+  pts.every((q) => q.gy === 10 || q.gy === 20),
   'corner rows at module edges',
 );
 ok(
@@ -105,29 +120,39 @@ ok(
 const floatingLamp = { id: 'l', type: 'lamp', gx: 8, gy: 20, gz: 1, state: 0 };
 ok(mountPoints(floatingLamp, allP).length === 0, 'no remote phantom nodes');
 const lp = mountPoints(snapExtension(floatingLamp, allP), allP);
-ok(lp.length === 2 && lp.every((q) => q.gx === 3), 'gz=1 module still mounts on a pillar column');
 ok(
-  mountPoints({ id: 'r', type: 'rail', gx: 3, gy: 5, gz: 0, state: 0 }, allP).length === 2,
+  lp.length === 2 && lp.every((q) => q.gx === 3),
+  'gz=1 module still mounts on a pillar column',
+);
+ok(
+  mountPoints({ id: 'r', type: 'rail', gx: 3, gy: 5, gz: 0, state: 0 }, allP)
+    .length === 2,
   'crossbar really derives two nodes',
 );
 ok(
-  mountPoints({ id: 'r', type: 'rail', gx: 3, gy: 5, gz: 0, state: 0 }, allP).every(
-    (q) => q.gx === 3 || q.gx === 18,
-  ),
+  mountPoints(
+    { id: 'r', type: 'rail', gx: 3, gy: 5, gz: 0, state: 0 },
+    allP,
+  ).every((q) => q.gx === 3 || q.gx === 18),
   'crossbar ends sit on both pillar columns',
 );
 ok(mountPoints(p3, allP).length === 0, 'pillars derive no mount points');
 ok(
-  mountPoints({ id: 'b', type: 'block', gx: 3, gy: 5, gz: 0, state: 0 }, allP).length === 0,
+  mountPoints({ id: 'b', type: 'block', gx: 3, gy: 5, gz: 0, state: 0 }, allP)
+    .length === 0,
   'real nodes derive no extra points',
 );
 // 拓展横向归位：挂接范围内有梯柱则保持原位；否则平移到最近梯柱的边缘，使模块始终挂接在梯柱上。
 ok(
-  snapExtension({ id: 'l', type: 'lamp', gx: 8, gy: 5, gz: 0, state: 0 }, allP).gx === 3,
+  snapExtension({ id: 'l', type: 'lamp', gx: 8, gy: 5, gz: 0, state: 0 }, allP)
+    .gx === 3,
   'narrow extension attaches at nearest pillar edge',
 );
 ok(
-  snapExtension({ id: 'c', type: 'cabinet', gx: 4, gy: 5, gz: 0, state: 0 }, allP).gx === 4,
+  snapExtension(
+    { id: 'c', type: 'cabinet', gx: 4, gy: 5, gz: 0, state: 0 },
+    allP,
+  ).gx === 4,
   'wide module between face-contact pillars stays',
 );
 for (const p of [...PRESETS, ...EXHIBITIONS]) {
@@ -139,6 +164,18 @@ for (const p of [...PRESETS, ...EXHIBITIONS]) {
     p.id + ' nodes sit on pillar columns',
   );
   const laid = prepareLayout(p.items);
+  for (const a of laid.filter((a) => a.type !== 'pillar')) {
+    const residuals = mountRungResidualsMm(a, laid);
+    ok(residuals.length > 0, p.id + ' supported component has rung residuals');
+    ok(
+      residuals.every((r) => r <= 0.05),
+      p.id + ' rung centres align ' + a.id,
+    );
+    ok(
+      rungSnapShiftMm(a, laid) === -12.5,
+      p.id + ' constant phase correction ' + a.id,
+    );
+  }
   ok(
     laid.every((a) => mounted(a, laid)),
     p.id + ' all assemblies have usable supports',
@@ -167,27 +204,48 @@ for (const p of [...PRESETS, ...EXHIBITIONS]) {
     p.id + ' extensions have a parent',
   );
   ok(
-    extensions.every((a) => laid.some((q) => q.id === a.parentId && M[q.type].family !== '拓展')),
+    extensions.every((a) =>
+      laid.some((q) => q.id === a.parentId && M[q.type].family !== '拓展'),
+    ),
     p.id + ' extension parents are ladder or nodes',
   );
 }
 ok(
-  cells({ type: 'worktop', state: 0 }).join() == cells({ type: 'worktop', state: 1 }).join(),
+  cells({ type: 'worktop', state: 0 }).join() ==
+    cells({ type: 'worktop', state: 1 }).join(),
   'fold reserve retained',
 );
-// 机械参数层（clamp.js）与 48 mm 网格是两套数据，禁止互相换算。
-ok(CLAMP.gapMm === CLAMP.jawBackMm - CLAMP.padFrontMm, 'clamp mouth depth = jawBack - padFront');
-ok(CLAMP.guideDiameterMm === 6 && CLAMP.guideLengthMm === 30, 'guide rod Ø6 × 30 mm');
+// 机械参数层（clamp.js）与 50 mm 网格是两套数据，禁止互相换算。
 ok(
-  48 % CLAMP.rungPitchMm !== 0 && CLAMP.rungPitchMm % 48 !== 0,
-  '25 mm rung pitch and the 48 mm grid never align (two-layer data)',
+  CLAMP.gapMm === CLAMP.jawBackMm - CLAMP.padFrontMm,
+  'clamp mouth depth = jawBack - padFront',
+);
+ok(
+  CLAMP.guideDiameterMm === 6 && CLAMP.guideLengthMm === 30,
+  'guide rod Ø6 × 30 mm',
+);
+ok(
+  (PITCH * 1000) % CLAMP.rungPitchMm === 0 && CLAMP.nodeSizeMm === 48,
+  '50 mm grid spans two 25 mm rungs; the real node remains 48 mm',
 );
 // 厚度合法性：范围 1–12 mm，之外拒绝。
-ok(!validThickness(0) && !validThickness(13) && !validThickness(NaN), 'thickness out of range rejected');
-ok(validThickness(1) && validThickness(12) && validThickness(6.5), 'thickness range accepted');
+ok(
+  !validThickness(0) && !validThickness(13) && !validThickness(NaN),
+  'thickness out of range rejected',
+);
+ok(
+  validThickness(1) && validThickness(12) && validThickness(6.5),
+  'thickness range accepted',
+);
 // 中心稳定（背面固定在软垫面 ⇒ 中心相对参考仅偏移 (t-6)/2，最大 3 mm）且压板全程贴合。
-ok(exhibitBackMm() === CLAMP.padFrontMm, 'exhibit back rests on the pad front (33.4 mm)');
-ok(exhibitFrontMm(6) === 39.4 && exhibitFrontMm(12) === 45.4, 'exhibit front tracks thickness');
+ok(
+  exhibitBackMm() === CLAMP.padFrontMm,
+  'exhibit back rests on the pad front (33.4 mm)',
+);
+ok(
+  exhibitFrontMm(6) === 39.4 && exhibitFrontMm(12) === 45.4,
+  'exhibit front tracks thickness',
+);
 ok(
   exhibitCenterMm(6) === 36.4 &&
     exhibitCenterMm(12) - 36.4 === 3 &&
@@ -225,7 +283,8 @@ for (let t = CLAMP.exhibitRangeMm[0]; t <= CLAMP.exhibitRangeMm[1]; t++) {
   ok(
     CLAMP.jawBackMm + sliderOffsetMm(t) === exhibitFrontMm(t) &&
       CLAMP.jawBackMm - CLAMP.guideLengthMm + sliderOffsetMm(t) >= 2.4,
-    'guide tip stops at the exhibit front and inner stop stays inside the cartridge at t=' + t,
+    'guide tip stops at the exhibit front and inner stop stays inside the cartridge at t=' +
+      t,
   );
 }
 // 收回状态：连接其他模块/独立放置时滑块全收（offset = −7），压板背面与
@@ -252,7 +311,9 @@ ok(mountRole(3, 3, 3) === 'lower-support', 'single row counts as support');
     'panel corners: two lower supports and two upper limiters',
   );
   ok(
-    pts.every((p) => p.gy === panel.gy || p.gy === panel.gy + cells(panel)[1] - 1),
+    pts.every(
+      (p) => p.gy === panel.gy || p.gy === panel.gy + cells(panel)[1] - 1,
+    ),
     'panel mount rows on bottom and top edges',
   );
 }
@@ -263,15 +324,23 @@ ok(mountRole(3, 3, 3) === 'lower-support', 'single row counts as support');
   const sha = (p) => createHash('sha256').update(readFileSync(p)).digest('hex');
   const generated = sha('assets/rhino/generated/assembly.json'),
     bundled = sha('src/geometry/models/rhino/assembly.json');
-  ok(generated === bundled, 'bundled assembly.json is byte-identical to the generated one');
-  const manifest = JSON.parse(readFileSync('assets/rhino/manifest.json', 'utf8'));
+  ok(
+    generated === bundled,
+    'bundled assembly.json is byte-identical to the generated one',
+  );
+  const manifest = JSON.parse(
+    readFileSync('assets/rhino/manifest.json', 'utf8'),
+  );
   ok(
     sha(manifest.sourcePath) === manifest.sourceSha256,
     'assets/rhino/source 3dm matches the hash recorded in manifest.json',
   );
   ok(
-    manifest.pillar.segmentHeightMm === 600 && manifest.pillar.rungContinuousAcrossSegments === true,
+    manifest.pillar.segmentHeightMm === 600 &&
+      manifest.pillar.rungContinuousAcrossSegments === true,
     'manifest records the 600 mm segment with continuous 25 mm rung pitch',
   );
 }
-console.log(checks + ' grid assertions passed; all space and exhibition presets valid.');
+console.log(
+  checks + ' grid assertions passed; all space and exhibition presets valid.',
+);

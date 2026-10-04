@@ -1,4 +1,4 @@
-# src/core — 48 mm 领域规则
+# src/core — 50 mm 领域规则
 
 布局规则的权威实现，源码分层中的最底层：纯数据 + 纯函数，**不 import three**，纯 Node 可测。所有组件、renderer、geometry 和测试都统一从 `index.js` 导入，`index.js` 只是兼容性 re-export，不含逻辑。向上只被 `geometry/`（派生网格）和 `store/`（状态操作）引用，core 不反向依赖它们。
 
@@ -29,5 +29,6 @@ assembly（仅依赖 modules）；geometry/models/rhino.js 是唯一经内部路
 - **只从 `index.js` 导入**。不要跨文件直接引 `modules.js` / `grid.js` 等内部模块，导出面以 `index.js` 为准。
 - **`MODULES` 有模块作用域后置覆盖**（`block.name`/`block.intro` 二次赋值、`panel.note`/`worktop.note` 覆盖、`cabinet.note` 追加），集中在 `modules.js` 尾部且执行顺序不可重排；新增模块属性派生请追加在对应循环之后。
 - **内部共享 helper 不从 `index.js` 导出**：`pillarsFor`、`nodeAtPoint`、`blockSupports` 由 `mount/mounting.js` 导出（`mount/rungs.js` 复用），`item` 由 `scenes.js` 导出（`grid.js` 的 `findSpace` 复用）——仅限目录内部使用。
-- **48 mm 网格与毫米机械参数分开管理**：格位规则只认 `PITCH`/`GRID`，机械尺寸只认 `mount/clamp.js`，两者禁止互相换算替代。
-- **改行为必须同步测试**：`tests/grid.mjs`（1003 项断言）直接覆盖本目录全部公开函数；派生挂接点不进入 `state.items`，配置清单不因此膨胀。
+- **50 mm 网格与毫米机械参数分开管理**：格位规则只认 `PITCH`/`GRID`，机械尺寸只认 `mount/clamp.js`，两者禁止互相换算替代。Rhino 节点实体仍为 48 mm，横档间距仍为 25 mm。
+- 网格为 `58 × 58 × 24` 格，标准展板为 `14 × 11 × 1` 格。横档吸附仍用原 minimax 算法，50 mm 网格下退化为 −12.5 mm 常量微调，残差为 0。
+- **改行为必须同步测试**：`tests/grid.mjs`（1161 项计数断言及网格基线检查）直接覆盖本目录全部公开函数；派生挂接点不进入 `state.items`，配置清单不因此膨胀。

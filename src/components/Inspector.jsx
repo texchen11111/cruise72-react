@@ -1,5 +1,13 @@
 import { Fragment, useEffect, useState } from 'react';
-import { MODULES as M, GRID, cells, assembly, isExhibitType, CLAMP } from '../core/index.js';
+import {
+  MODULES as M,
+  GRID,
+  PITCH,
+  cells,
+  assembly,
+  isExhibitType,
+  CLAMP,
+} from '../core/index.js';
 import { Icon } from './Icon.jsx';
 
 // Commit on blur/Enter, matching the original native change event. Local draft
@@ -10,12 +18,18 @@ function Coordinate({ a, axis, index, store }) {
   const commit = () => {
     const value = Number(draft);
     if (value !== a[axis]) store.moveItem(a.id, { [axis]: value });
-    setDraft(String(store.getSnapshot().items.find((x) => x.id === a.id)?.[axis] ?? a[axis]));
+    setDraft(
+      String(
+        store.getSnapshot().items.find((x) => x.id === a.id)?.[axis] ?? a[axis],
+      ),
+    );
   };
   return (
     <Fragment>
       <div className="row">
-        <label htmlFor={axis}>{['X 左右', 'Y 上下', 'Z 离墙'][index]} / 格</label>
+        <label htmlFor={axis}>
+          {['X 左右', 'Y 上下', 'Z 离墙'][index]} / 格
+        </label>
         <input
           id={axis}
           type="number"
@@ -31,7 +45,7 @@ function Coordinate({ a, axis, index, store }) {
         />
       </div>
       <div className="rangeends">
-        <span>{a[axis] * 48} mm（相对网格原点）</span>
+        <span>{a[axis] * (PITCH * 1000)} mm（相对网格原点）</span>
       </div>
     </Fragment>
   );
@@ -39,7 +53,10 @@ function Coordinate({ a, axis, index, store }) {
 function Dimension({ a, axis, index, store }) {
   const base = cells(a);
   const [draft, setDraft] = useState(String(base[index]));
-  useEffect(() => setDraft(String(cells(a)[index])), [a.id, a.sizeCells, a.state]);
+  useEffect(
+    () => setDraft(String(cells(a)[index])),
+    [a.id, a.sizeCells, a.state],
+  );
   const commit = () => {
     const value = Math.max(1, Math.round(Number(draft)));
     const next = cells(a);
@@ -55,7 +72,9 @@ function Dimension({ a, axis, index, store }) {
   };
   return (
     <div className="row">
-      <label htmlFor={'size-' + axis}>{['宽度', '高度', '深度'][index]} / 格</label>
+      <label htmlFor={'size-' + axis}>
+        {['宽度', '高度', '深度'][index]} / 格
+      </label>
       <input
         id={'size-' + axis}
         type="number"
@@ -67,12 +86,14 @@ function Dimension({ a, axis, index, store }) {
         onBlur={commit}
         onKeyDown={(e) => e.key === 'Enter' && commit()}
       />
-      <span className="unitread">{base[index] * 48} mm</span>
+      <span className="unitread">{base[index] * (PITCH * 1000)} mm</span>
     </div>
   );
 }
 function Thickness({ a, store }) {
-  const [draft, setDraft] = useState(String(a.exhibitMm ?? CLAMP.referenceExhibitMm));
+  const [draft, setDraft] = useState(
+    String(a.exhibitMm ?? CLAMP.referenceExhibitMm),
+  );
   useEffect(
     () => setDraft(String(a.exhibitMm ?? CLAMP.referenceExhibitMm)),
     [a.id, a.exhibitMm],
@@ -108,8 +129,8 @@ function Thickness({ a, store }) {
       </div>
       <div className="rangeends">
         <span>
-          前压板随厚度沿 Ø{CLAMP.guideDiameterMm} 导柱移动 ±{CLAMP.maxOutwardTravelMm} mm
-          内；超出 {lo}–{hi} mm 会被拒绝。
+          前压板随厚度沿 Ø{CLAMP.guideDiameterMm} 导柱移动 ±
+          {CLAMP.maxOutwardTravelMm} mm 内；超出 {lo}–{hi} mm 会被拒绝。
         </span>
       </div>
     </>
@@ -142,17 +163,22 @@ function ModuleDetails({ a, store }) {
       <details className="assembly-details">
         <summary>节点与连接构成</summary>
         <div className="assembly-spec">
-          <b>01 · 48 mm 节点 × {parts.nodes}</b>
+          <b>
+            01 · {PITCH * 1000} mm 网格节点 × {parts.nodes}
+          </b>
           <span>02 · {parts.connector}</span>
           <span>03 · {parts.surface}</span>
-          <small>节点包含在组合占位中；移动时整组按48 mm吸附。</small>
+          <small>
+            节点包含在组合占位中；移动时整组按{PITCH * 1000} mm吸附。 Rhino
+            节点实体为{CLAMP.nodeSizeMm} mm。
+          </small>
         </div>
       </details>
       <p className="intro">{m.intro}</p>
       <div className="spec">
         <b>
           {cells(a)
-            .map((v) => v * 48)
+            .map((v) => v * (PITCH * 1000))
             .join(' × ')}{' '}
           mm
         </b>
@@ -160,7 +186,8 @@ function ModuleDetails({ a, store }) {
       </div>
       <div className="gridread">{m.cells.join(' × ')} 格 · 占位包络</div>
       <p className="conceptnote">
-        坐标原点：网格左下后角。XYZ 分别为左右、上下、离墙；一格 = 48 mm。
+        坐标原点：网格左下后角。XYZ 分别为左右、上下、离墙；一格 ={' '}
+        {PITCH * 1000} mm。
       </p>
       {['gx', 'gy', 'gz'].map((axis, index) => (
         <Coordinate key={axis} a={a} axis={axis} index={index} store={store} />
@@ -172,11 +199,14 @@ function ModuleDetails({ a, store }) {
       {a.type === 'panel' && <Thickness a={a} store={store} />}
       {isExhibitType(a.type) && a.type !== 'panel' && (
         <p className="conceptnote">
-          薄界面按 Rhino 参考厚度 {CLAMP.referenceExhibitMm} mm 夹持；厚度参数在平面展陈上调节。
+          薄界面按 Rhino 参考厚度 {CLAMP.referenceExhibitMm} mm
+          夹持；厚度参数在平面展陈上调节。
         </p>
       )}
       <p className="warning">
-        {a.gz ? '离墙叠放：需要独立连接件及承力结构。' : '贴墙层：需以适配背板连接真实梯柱。'}
+        {a.gz
+          ? '离墙叠放：需要独立连接件及承力结构。'
+          : '贴墙层：需以适配背板连接真实梯柱。'}
       </p>
       <div className="row">
         <span>节点颜色</span>
@@ -188,8 +218,12 @@ function ModuleDetails({ a, store }) {
               style={{ background: co }}
               data-color={co}
               aria-label={
-                { '#3158e8': '蓝色', '#ed8e40': '橙色', '#e8e9e6': '白色', '#343b48': '深灰' }[co] +
-                '节点'
+                {
+                  '#3158e8': '蓝色',
+                  '#ed8e40': '橙色',
+                  '#e8e9e6': '白色',
+                  '#343b48': '深灰',
+                }[co] + '节点'
               }
               onClick={() => store.patchItem(a.id, { color: co })}
             />
@@ -202,9 +236,13 @@ function ModuleDetails({ a, store }) {
           <div className="row">
             <span>
               {
-                { bookrest: '图录', cabinet: '柜门', worktop: '台面', lamp: '灯具', scent: '香氛' }[
-                  a.type
-                ]
+                {
+                  bookrest: '图录',
+                  cabinet: '柜门',
+                  worktop: '台面',
+                  lamp: '灯具',
+                  scent: '香氛',
+                }[a.type]
               }
             </span>
             <button
@@ -245,14 +283,18 @@ function ModuleDetails({ a, store }) {
             max="100"
             value={a.intensity}
             aria-label="灯具亮度"
-            onChange={(e) => store.patchItem(a.id, { intensity: +e.target.value })}
+            onChange={(e) =>
+              store.patchItem(a.id, { intensity: +e.target.value })
+            }
           />
           <div className="row">
             <label htmlFor="temperature">色温</label>
             <select
               id="temperature"
               value={a.temperature}
-              onChange={(e) => store.patchItem(a.id, { temperature: +e.target.value })}
+              onChange={(e) =>
+                store.patchItem(a.id, { temperature: +e.target.value })
+              }
             >
               {[2700, 3200, 4000].map((v) => (
                 <option key={v} value={v}>
@@ -264,14 +306,20 @@ function ModuleDetails({ a, store }) {
         </>
       )}
       {a.type === 'scent' && (
-        <p className="warning">香氛默认关闭，可选择无香使用。动画仅展示开启状态。</p>
+        <p className="warning">
+          香氛默认关闭，可选择无香使用。动画仅展示开启状态。
+        </p>
       )}
       <hr className="divider" />
       <div className="actrow">
         <button id="duplicate" onClick={() => store.duplicate(a.id)}>
           复制模块
         </button>
-        <button id="remove" className="danger" onClick={() => store.remove(a.id)}>
+        <button
+          id="remove"
+          className="danger"
+          onClick={() => store.remove(a.id)}
+        >
           移除
         </button>
       </div>
@@ -347,8 +395,10 @@ export function Inspector({ state, store, onExport }) {
             )}
             <hr className="divider" />
             <div className="spec">
-              <b>共 {items.reduce((n, a) => n + M[a.type].mount, 0)} 处概念挂接点</b>含 V3
-              夹持与专用承力接口，不能作为同一种节点直接采购。
+              <b>
+                共 {items.reduce((n, a) => n + M[a.type].mount, 0)} 处概念挂接点
+              </b>
+              含 V3 夹持与专用承力接口，不能作为同一种节点直接采购。
             </div>
             <button
               className="primary"
@@ -359,7 +409,8 @@ export function Inspector({ state, store, onExport }) {
               导出配置清单 ↓
             </button>
             <p className="conceptnote">
-              导出 JSON 包含模块、尺寸、位置、功能状态与所需接口，可作为后续网站接入和建模的输入。
+              导出 JSON
+              包含模块、尺寸、位置、功能状态与所需接口，可作为后续网站接入和建模的输入。
             </p>
           </>
         ) : a ? (

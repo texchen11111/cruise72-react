@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-import { MODULES, position, EXHIBITIONS, PRESETS, cells, prepareLayout, rungSnapShiftMm, mountRungResidualsMm } from '../src/core/index.js';
+import {
+  MODULES,
+  position,
+  EXHIBITIONS,
+  PRESETS,
+  cells,
+  prepareLayout,
+  rungSnapShiftMm,
+  mountRungResidualsMm,
+} from '../src/core/index.js';
 
 // Exercise real Three.js geometry and animation without requiring a GPU.
 const result = await build({
@@ -19,8 +28,16 @@ const result = await build({
   format: 'esm',
   write: false,
 });
-const { THREE, createMaterials, createModuleBuilder, createAnimation, setupPointer, RHINO_V3 } = await import(
-  'data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64')
+const {
+  THREE,
+  createMaterials,
+  createModuleBuilder,
+  createAnimation,
+  setupPointer,
+  RHINO_V3,
+} = await import(
+  'data:text/javascript;base64,' +
+    Buffer.from(result.outputFiles[0].text).toString('base64')
 );
 
 globalThis.document = {
@@ -86,11 +103,20 @@ for (const item of ctx.items) {
 }
 assert.equal(ctx.models.size, 17);
 assert.equal(builder.buildProps, undefined, 'decorative rails are removed');
-assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra rails');
+assert.equal(
+  ctx.scene.children.length,
+  17,
+  'only real module groups, no extra rails',
+);
 
 // Rhino 真实网格：梯柱与节点不再是立方体/圆柱近似。
 {
   const pillar = ctx.models.get('pillar');
+  assert.equal(
+    pillar.children.filter((g) => g.children.some((o) => o.userData.rhinoPart)).length,
+    4,
+    '2400 mm pillar uses exactly four original 600 mm segments, without a floating-point extra',
+  );
   let pillarMeshes = 0,
     pillarTris = 0;
   pillar.traverse((o) => {
@@ -99,15 +125,20 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
       pillarTris += o.geometry.index.count / 3;
     }
   });
-  assert.ok(pillarMeshes >= 25, 'pillar renders the Rhino part set across stacked segments');
-  assert.ok(pillarTris > 2000, 'pillar triangle budget comes from the real ladder mesh');
+  assert.ok(
+    pillarMeshes >= 25,
+    'pillar renders the Rhino part set across stacked segments',
+  );
+  assert.ok(
+    pillarTris > 2000,
+    'pillar triangle budget comes from the real ladder mesh',
+  );
 
-  // 格内吸附最近横档（48/25 互质偏差的装配方案，见 core/mount/rungs.js 注释）：
-  // 全部预设/展陈的挂点在微调后残差 ≤ 5.5 mm、微调量 ≤ 12.5 mm，且按占位
-  // 钩口包络（高 7 mm，横档厚 4.8 mm，设计咬合中心距节点中心 15 mm）计算，
-  // 残差 5.5 mm 时背钩与横档保持 ≥ 2.0 mm 实体重叠，不脱钩。
+  // 50 mm 网格跨两个横档，固定相位微调后所有挂点均落在横档中心。
   {
-    let worst = 0, maxShift = 0, n = 0;
+    let worst = 0,
+      maxShift = 0,
+      n = 0;
     for (const ex of [...EXHIBITIONS, ...PRESETS]) {
       const items = prepareLayout(ex.items);
       for (const a of items) {
@@ -124,8 +155,14 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
       }
     }
     assert.ok(n >= 100, `snap covers all preset mount points (n=${n})`);
-    assert.ok(maxShift <= 12.5 + 1e-9, `snap shift bounded (max ${maxShift.toFixed(2)} mm)`);
-    assert.ok(worst <= 5.5 + 1e-9, `rung snap residual bounded (worst ${worst.toFixed(2)} mm)`);
+    assert.ok(
+      maxShift <= 12.5 + 1e-9,
+      `snap shift bounded (max ${maxShift.toFixed(2)} mm)`,
+    );
+    assert.ok(
+      worst <= 0.05,
+      `rung snap residual bounded (worst ${worst.toFixed(2)} mm)`,
+    );
   }
   const block = ctx.models.get('block');
   let blockSlider = false;
@@ -133,7 +170,8 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
     if (o.userData.slider) {
       blockSlider = true;
       assert.ok(
-        Math.abs(o.position.z + 0.007) < 1e-9 && o.userData.slider.retract === true,
+        Math.abs(o.position.z + 0.007) < 1e-9 &&
+          o.userData.slider.retract === true,
         'standalone node slider is fully retracted to a complete cube',
       );
     }
@@ -147,12 +185,28 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
     scene: new THREE.Scene(),
     models: new Map(),
     items: [
-      { id: 'p1', type: 'pillar', gx: 3, gy: 0, gz: 0, state: 0, color: '#3158e8' },
-      { id: 'p2', type: 'pillar', gx: 18, gy: 0, gz: 0, state: 0, color: '#3158e8' },
+      {
+        id: 'p1',
+        type: 'pillar',
+        gx: 3,
+        gy: 0,
+        gz: 0,
+        state: 0,
+        color: '#3158e8',
+      },
+      {
+        id: 'p2',
+        type: 'pillar',
+        gx: 18,
+        gy: 0,
+        gz: 0,
+        state: 0,
+        color: '#3158e8',
+      },
       {
         id: 'x',
         type: 'panel',
-        gx: 3,
+        gx: 4,
         gy: 10,
         gz: 0,
         state: 0,
@@ -179,8 +233,10 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
     'thickness 12 mm drives every slider to offset t-7 = 5 mm',
   );
   assert.ok(
-    mechanisms.filter((m) => m.userData.mechanism.role === 'upper-limit').length === 2 &&
-      mechanisms.filter((m) => m.userData.mechanism.role === 'lower-support').length === 2,
+    mechanisms.filter((m) => m.userData.mechanism.role === 'upper-limit')
+      .length === 2 &&
+      mechanisms.filter((m) => m.userData.mechanism.role === 'lower-support')
+        .length === 2,
     'top row limits, bottom row supports',
   );
   assert.ok(
@@ -190,9 +246,13 @@ assert.equal(ctx.scene.children.length, 17, 'only real module groups, no extra r
     'upper-limit nodes rotate the clamp mechanism 180° while hooks stay down',
   );
   // 厚度变化时锚点（节点基准面）不随滑块移动。
-  mountCtx.items = mountCtx.items.map((a) => (a.id === 'x' ? { ...a, exhibitMm: 1 } : a));
+  mountCtx.items = mountCtx.items.map((a) =>
+    a.id === 'x' ? { ...a, exhibitMm: 1 } : a,
+  );
   mountBuilder.dispose(panel);
-  const rebuilt = mountBuilder.buildModule(mountCtx.items.find((a) => a.id === 'x'));
+  const rebuilt = mountBuilder.buildModule(
+    mountCtx.items.find((a) => a.id === 'x'),
+  );
   const rebuiltSliders = [];
   rebuilt.traverse((o) => {
     if (o.userData.slider) rebuiltSliders.push(o);
@@ -299,7 +359,7 @@ for (const [type, y] of [
   Object.assign(event, { button: 0, pointerId: 1, clientX: 100, clientY: y });
   ctx.renderer.domElement.dispatchEvent(event);
 }
-assert.deepEqual(resized, { id: 'panel', size: [15, 12, 3], commit: false });
+assert.deepEqual(resized, { id: 'panel', size: [14, 11, 3], commit: false });
 assert.equal(committed, true, '一次拖动在释放时提交');
 cleanup.forEach((fn) => fn());
 let sharedDisposed = false;
@@ -307,7 +367,11 @@ ctx.materials.shared.silver.addEventListener('dispose', () => {
   sharedDisposed = true;
 });
 builder.dispose(ctx.models.get('cabinet'));
-assert.equal(sharedDisposed, false, 'shared materials survive individual module removal');
+assert.equal(
+  sharedDisposed,
+  false,
+  'shared materials survive individual module removal',
+);
 console.log(
   'Scene: 17 real geometries, live animation, transitions, book state, drop and cleanup passed.',
 );

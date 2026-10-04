@@ -14,15 +14,16 @@ const item = (id, type, gx, gy, state = 0, gz = 0) => ({
   exhibitMm: CLAMP.referenceExhibitMm,
 });
 // 梯柱列：所有预设共享的四根基底轨条（id 保持一致，切换场景时视为固定设施）。
-// 布局与参考视频一致：两组挂接区域、柱距 15 格（720 mm，视频标注“柱距 714 mm”）。
+// 沿用参考视频的两组挂接区域和格位；50 mm 网格下柱距 15 格 = 750 mm。
 export const PILLAR_COLUMNS = [3, 18, 33, 48];
-const pillarItems = () => PILLAR_COLUMNS.map((gx, i) => item('p' + (i + 1), 'pillar', gx, 0));
+const pillarItems = () =>
+  PILLAR_COLUMNS.map((gx, i) => item('p' + (i + 1), 'pillar', gx, 0));
 export const EXHIBITIONS = [
   {
     id: 'flat',
     name: '平面悬展',
     tag: '夹持 / 留白',
-    desc: '以48 mm节点框选航线摄影与海报，灯具和展签共同组织阅读顺序。',
+    desc: '以50 mm网格节点框选航线摄影与海报，灯具和展签共同组织阅读顺序。',
     items: [
       item('a', 'panel', 3, 27),
       item('b', 'panel', 18, 24),

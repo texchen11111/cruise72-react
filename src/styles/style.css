@@ -863,7 +863,7 @@ dialog p {
 .catalognote {
   line-height: 1.8;
 }
-/* Exhibition modes share the same 48 mm node system. */
+/* Exhibition modes share the same 50 mm layout grid. */
 .exhibition-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

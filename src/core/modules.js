@@ -50,7 +50,8 @@ export const MODULES = {
     anchor: '窄背板双挂点 + 转向接头',
     level: '新增功能机芯',
     intro: '同一盏灯在展品照明、阅读和晚间活动之间转换。',
-    mechanism: '灯头用转向关节接入窄背板；低压线沿专用线槽布置，独立插头供电，不通过伸缩导柱导电。',
+    mechanism:
+      '灯头用转向关节接入窄背板；低压线沿专用线槽布置，独立插头供电，不通过伸缩导柱导电。',
     parts: 'LED 模组、匹配驱动器、转向关节、低压连接器与固定线夹。',
     note: '页面亮度与色温为视觉演示，不代表照度、散热或电气认证。',
     mount: 2,
@@ -68,7 +69,8 @@ export const MODULES = {
     anchor: '窄背板双挂点 + 抽换芯盒',
     level: '新增功能机芯',
     intro: '在限定的休憩区域提供可关闭、可替换的局部香氛体验。',
-    mechanism: '可拆芯盒装入外壳；底部容纳密封耗材，微型风扇从独立风道送风。挂接接口与耗材仓分离。',
+    mechanism:
+      '可拆芯盒装入外壳；底部容纳密封耗材，微型风扇从独立风道送风。挂接接口与耗材仓分离。',
     parts: '低压微型风扇、风量控制件、密封盒、密封圈和低压接头。',
     note: '默认关闭；公共活动优先无香。气流动画仅为示意，不代表真实扩散范围。',
     mount: 2,
@@ -86,7 +88,8 @@ export const MODULES = {
     anchor: '承托支架 × 2 + 挂接点 × 4',
     level: '新增承力结构',
     intro: '放置图录、样品与轻型展示物，连接展陈与临时服务。',
-    mechanism: '两侧支架将悬挑力传回梯柱，上下挂点形成抗倾覆力偶；层板前沿增加挡边。',
+    mechanism:
+      '两侧支架将悬挑力传回梯柱，上下挂点形成抗倾覆力偶；层板前沿增加挡边。',
     parts: '金属承托臂、连接螺钉、防抬销与表面防滑垫。',
     note: '不展示未经测试的承重数值；选品与安装高度需结合通行空间。',
     mount: 4,
@@ -104,7 +107,8 @@ export const MODULES = {
     anchor: '窄背板双挂点 + 换片框',
     level: '新增接口件',
     intro: '切换活动标题、地点与简要提示，让同一空间有不同身份。',
-    mechanism: '平面信息片插入侧开框，背板固定于同一根梯柱；机械止挡防止片材意外滑出。',
+    mechanism:
+      '平面信息片插入侧开框，背板固定于同一根梯柱；机械止挡防止片材意外滑出。',
     parts: '片材、止挡销、紧固螺钉；也可进一步开发电子墨水替换芯。',
     note: '本版使用静态换片；不包含联网屏幕或实际信息发布。',
     mount: 2,
@@ -122,7 +126,8 @@ export const MODULES = {
     anchor: '承力背架 × 1 + 锁定支撑臂 × 2',
     level: '新增承力结构',
     intro: '为亲子手作、材料体验和临时讲解提供短时操作面。',
-    mechanism: '台面通过铰链连接背架；展开后支撑臂机械锁定。收拢时台面竖起贴近梯柱。',
+    mechanism:
+      '台面通过铰链连接背架；展开后支撑臂机械锁定。收拢时台面竖起贴近梯柱。',
     parts: '铰链、带正向锁定的支撑臂、贯穿螺钉、收拢锁扣。',
     note: '收拢状态也占用高度；不以摩擦或磁吸替代承力锁定。',
     mount: 4,
@@ -140,7 +145,8 @@ export const MODULES = {
     anchor: '轻框背板 + 挂接点 × 4',
     level: '新增接口件',
     intro: '在阅读、休息与小组活动中形成柔和的墙面界面。',
-    mechanism: '可拆面料包覆轻框与内芯，再通过背板连接梯柱。面层独立更换，不改变挂接结构。',
+    mechanism:
+      '可拆面料包覆轻框与内芯，再通过背板连接梯柱。面层独立更换，不改变挂接结构。',
     parts: '轻框、紧固件、包覆面料、内芯与可拆连接件。',
     note: '吸声效果及材料阻燃性能需实测；本版只演示布局与色彩。',
     mount: 4,
@@ -151,20 +157,20 @@ export const MODULES = {
 
 MODULES.block = {
   name: '基础方块',
-  en: 'UNIT / 48',
+  en: 'UNIT / 50',
   code: '00',
   kind: '展陈',
   draw: 'frame',
-  level: '48 mm 基础单元',
+  level: '50 mm 基础单元',
   anchor: '标准化背部接口（待开发）',
   intro: '最小 1 × 1 × 1 格单元，可相邻拼接、向外叠放，探索组合关系。',
   mechanism:
-    '统一外包络为 48 mm 立方体。后接口连接适配背板，侧接口用于模块组合；内部结构仍需按 V3 重新校核。',
+    '布局占位为 50 mm 立方格，当前 Rhino 节点实体仍为 48 mm。后接口连接适配背板，侧接口用于模块组合；内部结构仍需按 V3 重新校核。',
   parts: '拟用 M3 紧固件、定位销及防脱锁定件，规格待打样。',
   note: '叠放仅表达空间组合；悬挑连接与承载尚未验证。',
   mount: 1,
 };
-MODULES.block.name = '48 mm 基础节点';
+MODULES.block.name = '50 mm 基础节点';
 MODULES.block.intro = '1 × 1 × 1 格的连接基础；展示面和功能附件围绕节点组合。';
 const extension = (name, en, code, draw, kind, mount, intro, mechanism) => ({
   name,
@@ -176,9 +182,9 @@ const extension = (name, en, code, draw, kind, mount, intro, mechanism) => ({
   intro,
   mechanism,
   level: '节点拓展组合',
-  anchor: `48 mm 节点 × ${mount} + 专用连接件`,
+  anchor: `50 mm 网格节点 × ${mount} + 专用连接件`,
   parts: '定位销、M3紧固件、防脱锁定件；承力连接件规格待打样。',
-  note: '外包络以48 mm整数格计；板材厚度按结构设计。挂接和承载需实测。',
+  note: '外包络以50 mm整数格计；Rhino 节点实体仍为48 mm，板材厚度按结构设计。挂接和承载需实测。',
 });
 MODULES.rail = extension(
   '节点横向连接',
@@ -188,7 +194,7 @@ MODULES.rail = extension(
   '连接件',
   2,
   '两个节点连接一段横杆，形成连续的挂接基准。',
-  '端部48 mm节点通过定位和机械锁定连接横杆；背部适配板将载荷传回梯柱。',
+  '端部50 mm网格节点通过定位和机械锁定连接横杆；Rhino 节点实体仍为48 mm，背部适配板将载荷传回梯柱。',
 );
 MODULES.tray = extension(
   '浅托盘组合',
@@ -220,7 +226,8 @@ MODULES.pillar = {
   level: 'Rhino V3 基底',
   anchor: '墙体固定 / 梯柱基底',
   intro: '沿用 Rhino V3 梯柱作为所有节点和拓展的移动基准。',
-  mechanism: '梯柱固定在墙体适配位置；节点只能沿梯柱的网格位置移动，拓展再挂接到节点。',
+  mechanism:
+    '梯柱固定在墙体适配位置；节点只能沿梯柱的网格位置移动，拓展再挂接到节点。',
   parts: 'Rhino V3 梯柱、背部固定件、端部止挡。',
   note: '尺寸来源于墙1111111111.3dm；网页模型用于布局验证，工程加工仍以原始 Rhino 文件为准。',
 };
@@ -269,7 +276,7 @@ const sizes = {
   tray: [14, 3, 4],
   bookrest: [14, 8, 5],
   block: [1, 1, 1],
-  panel: [15, 12, 1],
+  panel: [14, 11, 1],
   cabinet: [14, 11, 6],
   lamp: [4, 4, 4],
   scent: [3, 5, 3],
@@ -349,7 +356,9 @@ for (const [type, m] of Object.entries(MODULES)) {
   m.subkind = subkindByType[type];
   m.interfaces = interfacesByType[type] || [];
 }
-MODULES.panel.note = '15 × 12 × 1 格为占位包络，展板本体仍为薄板；夹持厚度与结构需要打样。';
+MODULES.panel.note =
+  '14 × 11 × 1 格为占位包络（700 × 550 mm 板面），展板本体仍为薄板；夹持厚度与结构需要打样。';
 MODULES.worktop.note =
   '预留 14 × 10 × 10 格活动包络，包含折叠路径。收拢后仍保留该空间，避免其他模块阻碍展开。';
-MODULES.cabinet.note += ' 开门时额外预留前方 14 格深度的转动包络；深度总范围为 24 格。';
+MODULES.cabinet.note +=
+  ' 开门时额外预留前方 14 格深度的转动包络；深度总范围为 24 格。';

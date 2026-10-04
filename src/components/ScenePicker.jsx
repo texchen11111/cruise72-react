@@ -1,4 +1,4 @@
-import { PRESETS, EXHIBITIONS, MODULES } from '../core/index.js';
+import { PRESETS, EXHIBITIONS, MODULES, PITCH } from '../core/index.js';
 
 export function ScenePicker({ state, store }) {
   return (
@@ -53,7 +53,7 @@ export function ScenePicker({ state, store }) {
       </div>
       <div className="node-summary">
         <b>
-          48 mm 节点 ×{' '}
+          {PITCH * 1000} mm 网格节点 ×{' '}
           {state.items.reduce((n, a) => n + MODULES[a.type].mount, 0)}
         </b>
         <span>梯柱 → 节点 → 拓展</span>

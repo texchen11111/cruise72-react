@@ -1,11 +1,14 @@
-import { MODULES as M } from '../core/index.js';
+import { MODULES as M, PITCH } from '../core/index.js';
 import { ModelPreview } from './ModelPreview.jsx';
 export function Catalog({ state, store }) {
   const families = ['全部', '梯柱', '节点', '拓展'];
   const subkinds = Array.from(
     new Set(
       Object.values(M)
-        .filter((m) => state.familyFilter === '全部' || m.family === state.familyFilter)
+        .filter(
+          (m) =>
+            state.familyFilter === '全部' || m.family === state.familyFilter,
+        )
         .map((m) => m.subkind),
     ),
   );
@@ -26,9 +29,19 @@ export function Catalog({ state, store }) {
       </div>
       <label className="subfilter">
         <span>细分</span>
-        <select value={state.subkindFilter} onChange={(e) => store.setSubkindFilter(e.target.value)}>
+        <select
+          value={state.subkindFilter}
+          onChange={(e) => store.setSubkindFilter(e.target.value)}
+        >
           <option value="全部">全部细分</option>
-          {subkinds.filter(Boolean).sort().map((x) => <option key={x} value={x}>{x}</option>)}
+          {subkinds
+            .filter(Boolean)
+            .sort()
+            .map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
         </select>
       </label>
       <div className="cards">
@@ -36,8 +49,10 @@ export function Catalog({ state, store }) {
           .sort((a, b) => a[1].code.localeCompare(b[1].code))
           .filter(
             ([k, m]) =>
-              (state.familyFilter === '全部' || m.family === state.familyFilter) &&
-              (state.subkindFilter === '全部' || m.subkind === state.subkindFilter),
+              (state.familyFilter === '全部' ||
+                m.family === state.familyFilter) &&
+              (state.subkindFilter === '全部' ||
+                m.subkind === state.subkindFilter),
           )
           .map(([k, m]) => (
             <button
@@ -56,7 +71,9 @@ export function Catalog({ state, store }) {
               <span className="addmark">＋</span>
               <ModelPreview type={k} />
               <strong>{m.name}</strong>
-              <small>{m.cells.map((n) => n * 48).join(' × ')} mm</small>
+              <small>
+                {m.cells.map((n) => n * (PITCH * 1000)).join(' × ')} mm
+              </small>
             </button>
           ))}
       </div>

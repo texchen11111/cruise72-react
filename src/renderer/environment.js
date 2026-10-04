@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ORIGIN, PITCH } from '../core/index.js';
+import { GRID, ORIGIN, PITCH } from '../core/index.js';
 import { cube } from '../geometry/primitives.js';
 
 export function createEnvironment(ctx, stage, options = {}) {
@@ -8,25 +8,36 @@ export function createEnvironment(ctx, stage, options = {}) {
   function dimensions() {
     const g = new THREE.Group();
     const points = [];
-    for (let i = 0; i <= 60; i++) {
-      const x = ORIGIN[0] + i * PITCH,
-        y = ORIGIN[1] + i * PITCH;
-      points.push(x, 0.01, 0.002, x, 2.89, 0.002, -1.44, y, 0.002, 1.44, y, 0.002);
+    const left = ORIGIN[0];
+    const right = left + GRID[0] * PITCH;
+    const height = GRID[1] * PITCH;
+    const depth = GRID[2] * PITCH;
+    for (let i = 0; i <= GRID[0]; i++) {
+      const x = left + i * PITCH;
+      points.push(x, ORIGIN[1], 0.002, x, height, 0.002);
     }
-    for (let z = 0; z <= 24; z++) {
+    for (let i = 0; i <= GRID[1]; i++) {
+      const y = ORIGIN[1] + i * PITCH;
+      points.push(left, y, 0.002, right, y, 0.002);
+    }
+    for (let z = 0; z <= GRID[2]; z++) {
       const d = z * PITCH;
-      points.push(-1.44, 0.005, d, 1.44, 0.005, d);
+      points.push(left, 0.005, d, right, 0.005, d);
     }
-    for (let x = 0; x <= 60; x++) {
-      const v = -1.44 + x * PITCH;
-      points.push(v, 0.005, 0, v, 0.005, 24 * PITCH);
+    for (let x = 0; x <= GRID[0]; x++) {
+      const v = left + x * PITCH;
+      points.push(v, 0.005, 0, v, 0.005, depth);
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
     g.add(
       new THREE.LineSegments(
         geo,
-        new THREE.LineBasicMaterial({ color: '#8a9ab1', transparent: true, opacity: 0.13 }),
+        new THREE.LineBasicMaterial({
+          color: '#8a9ab1',
+          transparent: true,
+          opacity: 0.13,
+        }),
       ),
     );
     g.visible = true;
@@ -41,10 +52,17 @@ export function createEnvironment(ctx, stage, options = {}) {
     // buffer even though ordinary WebGL is available. Retry with the lowest
     // compatible context before the UI falls back to the plan view.
     try {
-      ctx.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      ctx.renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        preserveDrawingBuffer: true,
+      });
     } catch (firstError) {
       try {
-        ctx.renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false, powerPreference: 'low-power' });
+        ctx.renderer = new THREE.WebGLRenderer({
+          antialias: false,
+          preserveDrawingBuffer: false,
+          powerPreference: 'low-power',
+        });
       } catch {
         throw firstError;
       }
@@ -134,7 +152,9 @@ export function createEnvironment(ctx, stage, options = {}) {
         for (const y of [bounds.min.y, bounds.max.y])
           for (const z of [bounds.min.z, bounds.max.z])
             projected.expandByPoint(
-              new THREE.Vector3(x, y, z).applyMatrix4(ctx.camera.matrixWorldInverse),
+              new THREE.Vector3(x, y, z).applyMatrix4(
+                ctx.camera.matrixWorldInverse,
+              ),
             );
       const projectedSize = projected.getSize(new THREE.Vector3());
       const half = Math.max(projectedSize.y, projectedSize.x / aspect) * 0.65;
@@ -153,7 +173,9 @@ export function createEnvironment(ctx, stage, options = {}) {
       ctx.scene.add(ground);
       ctx.sun.target.position.copy(center);
       ctx.scene.add(ctx.sun.target);
-      ctx.sun.position.copy(center).add(new THREE.Vector3(-2, 4, 3).multiplyScalar(radius));
+      ctx.sun.position
+        .copy(center)
+        .add(new THREE.Vector3(-2, 4, 3).multiplyScalar(radius));
       ctx.sun.shadow.camera.left = -radius * 2;
       ctx.sun.shadow.camera.right = radius * 2;
       ctx.sun.shadow.camera.top = radius * 2;
@@ -166,8 +188,14 @@ export function createEnvironment(ctx, stage, options = {}) {
       ctx.renderer.render(ctx.scene, ctx.camera);
       return;
     }
-    wallMat = new THREE.MeshStandardMaterial({ color: '#f7f6f2', roughness: 0.92 });
-    floorMat = new THREE.MeshStandardMaterial({ color: '#ddd8ce', roughness: 0.84 });
+    wallMat = new THREE.MeshStandardMaterial({
+      color: '#f7f6f2',
+      roughness: 0.92,
+    });
+    floorMat = new THREE.MeshStandardMaterial({
+      color: '#ddd8ce',
+      roughness: 0.84,
+    });
     cube(ctx.scene, 2.9, 2.9, 0.1, 0, 1.45, -0.05, wallMat);
     cube(ctx.scene, 9, 0.04, 6, 0, -0.022, 1.3, floorMat); // Secondary mounting frame is illustrative; exact rail adapter design remains unverified.
 

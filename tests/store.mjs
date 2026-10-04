@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { createPlannerStore } from '../src/store/index.js';
-import { PRESETS, clone, prepareLayout, mounted, CLAMP } from '../src/core/index.js';
+import {
+  PRESETS,
+  clone,
+  prepareLayout,
+  mounted,
+  CLAMP,
+} from '../src/core/index.js';
 const s = createPlannerStore();
 let notifications = 0;
 const off = s.subscribe(() => notifications++);
@@ -50,19 +56,32 @@ try {
   s.setExhibition(0);
   s.patchItem('d', { intensity: 85, temperature: 4000, color: '#ed8e40' });
   const d = s.exportData();
-  assert.equal(d.version, 'grid48-1');
-  assert.equal(d.grid.unit_mm, 48);
+  assert.equal(d.version, 'grid50-1');
+  assert.equal(d.grid.unit_mm, 50);
+  assert.deepEqual(d.grid.counts, [58, 58, 24]);
+  assert.deepEqual(d.grid.origin_wall_mm, [10, 10, 0]);
   assert.equal(d.modules.find((a) => a.id === 'd').intensity, 85);
-  assert.deepEqual(d.modules[0].position_cells, [3, 27, 0]);
+  assert.deepEqual(d.modules[0].position_cells, [4, 27, 0]);
+  assert.deepEqual(d.modules[0].position_grid_mm, [200, 1350, 0]);
+  assert.deepEqual(d.modules[0].dimensions_mm, [700, 550, 50]);
   const byId = new Map(d.modules.map((m) => [m.id, m]));
   const extensionMountTotal = s
     .getSnapshot()
     .items.filter((a) => byId.get(a.id)?.family === '拓展')
     .reduce((n, a) => n + byId.get(a.id).assembly.nodes, 0);
-  assert.ok(Array.isArray(d.connection_nodes), 'export carries derived connection nodes');
-  assert.equal(d.connection_nodes.length, extensionMountTotal, 'one derived node per mount point');
   assert.ok(
-    d.connection_nodes.every((n) => n.pillar_id && d.modules.some((m) => m.id === n.pillar_id)),
+    Array.isArray(d.connection_nodes),
+    'export carries derived connection nodes',
+  );
+  assert.equal(
+    d.connection_nodes.length,
+    extensionMountTotal,
+    'one derived node per mount point',
+  );
+  assert.ok(
+    d.connection_nodes.every(
+      (n) => n.pillar_id && d.modules.some((m) => m.id === n.pillar_id),
+    ),
     'derived nodes reference real pillars',
   );
   assert.ok(
@@ -80,8 +99,16 @@ try {
   assert.equal(s.patchItem('a', { exhibitMm: 10 }), true);
   const cn = s.exportData().connection_nodes.filter((n) => n.owner_id === 'a');
   assert.equal(cn.length, 4, 'panel exports four connection nodes');
-  assert.equal(cn.filter((n) => n.role === 'lower-support').length, 2, 'two lower supports');
-  assert.equal(cn.filter((n) => n.role === 'upper-limit').length, 2, 'two upper limiters');
+  assert.equal(
+    cn.filter((n) => n.role === 'lower-support').length,
+    2,
+    'two lower supports',
+  );
+  assert.equal(
+    cn.filter((n) => n.role === 'upper-limit').length,
+    2,
+    'two upper limiters',
+  );
   assert.ok(
     cn.every(
       (n) =>
@@ -93,8 +120,19 @@ try {
     'connection nodes carry mechanical clamp data and live thickness',
   );
   assert.ok(
-    cn.every((n) => n.anchor_world_mm[2] === n.gz * 48 + CLAMP.anchorFromGridZMm),
+    cn.every(
+      (n) => n.anchor_world_mm[2] === n.gz * 50 + CLAMP.anchorFromGridZMm,
+    ),
     'exported anchor equals the on-screen node anchor plane',
+  );
+  assert.ok(
+    cn.every(
+      (n) =>
+        n.position_grid_mm.every((v, i) => v === [n.gx, n.gy, n.gz][i] * 50) &&
+        n.anchor_world_mm[0] === Math.round((n.gx + 0.5) * 50 + 10) &&
+        n.anchor_world_mm[1] === Math.round((n.gy + 0.5) * 50 + 10 - 12.5),
+    ),
+    'export retains the agreed 10 mm origin and includes rung phase correction',
   );
   s.togglePlay();
   assert.equal(s.getSnapshot().playing, true);
@@ -111,7 +149,10 @@ try {
   assert.equal(s.getSnapshot().transition.moved, 3);
   s.toggleState('r1');
   assert.equal(s.getSnapshot().items.find((a) => a.id === 'r1').state, 1);
-  assert.equal(s.exportData().modules.find((a) => a.id === 'r1').assembly.nodes, 4);
+  assert.equal(
+    s.exportData().modules.find((a) => a.id === 'r1').assembly.nodes,
+    4,
+  );
   s.setExhibition(3);
   assert.equal(s.getSnapshot().exhibition, 3);
   s.setPreset(1);
@@ -130,26 +171,45 @@ try {
   assert.equal(extension.parentId, node.id);
   const panel2 = h.addItem('panel', 33, 4, 0, null, true);
   assert.equal(panel2.parentId, 'p3', '远处拓展不能绑到不相接的节点');
-  const before = h.getSnapshot().items.map((a) => ({ id: a.id, gx: a.gx, gy: a.gy }));
-  assert.equal(h.moveItem('p1', { gx: 4 }), false, '移动梯柱若导致上方模块碰撞，则整组拒绝移动');
+  const before = h
+    .getSnapshot()
+    .items.map((a) => ({ id: a.id, gx: a.gx, gy: a.gy }));
+  assert.equal(
+    h.moveItem('p1', { gx: 5 }),
+    false,
+    '移动梯柱若导致上方模块碰撞，则整组拒绝移动',
+  );
   h.remove('a');
   assert.equal(h.moveItem('p1', { gx: 4 }), true);
-  for (const a of h.getSnapshot().items.filter((x) => [node.id, extension.id].includes(x.id))) {
+  for (const a of h
+    .getSnapshot()
+    .items.filter((x) => [node.id, extension.id].includes(x.id))) {
     const old = before.find((x) => x.id === a.id);
     assert.equal(a.gx, old.gx + 1);
   }
-  assert.equal(h.getSnapshot().items.find((a) => a.id === panel2.id).gx, panel2.gx);
+  assert.equal(
+    h.getSnapshot().items.find((a) => a.id === panel2.id).gx,
+    panel2.gx,
+  );
   assert.equal(h.resizeItem(extension.id, [16, 12, 1]), true);
   assert.deepEqual(
     h.exportData().modules.find((a) => a.id === extension.id).size_cells,
     [16, 12, 1],
   );
-  assert.equal(h.moveItem(node.id, { gy: 5 }), true, '移动节点带动实际挂接的拓展');
+  assert.equal(
+    h.moveItem(node.id, { gy: 5 }),
+    true,
+    '移动节点带动实际挂接的拓展',
+  );
   assert.equal(h.getSnapshot().items.find((a) => a.id === extension.id).gy, 5);
   const safe = clone(h.getSnapshot().items);
   assert.equal(h.moveItem(node.id, { gy: 48 }), false, '节点不能超出梯柱顶部');
   assert.equal(h.moveItem(extension.id, { gz: 8 }), false, '拓展不能悬空离墙');
-  assert.equal(h.resizeItem('p1', [1, 10, 1]), false, '缩短梯柱不能使已挂模块脱落');
+  assert.equal(
+    h.resizeItem('p1', [1, 10, 1]),
+    false,
+    '缩短梯柱不能使已挂模块脱落',
+  );
   assert.equal(h.remove('p1'), false, '删除支撑前必须处理依赖');
   assert.equal(h.addItem('block', 12, 52, 0, null, true), undefined);
   assert.deepEqual(h.getSnapshot().items, safe, '无效操作不改变任何构件');

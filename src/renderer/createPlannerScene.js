@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { ORIGIN, PITCH, envelope, position, cells, mountingKey } from '../core/index.js';
+import { ORIGIN, PITCH, envelope, cells, mountingKey } from '../core/index.js';
 import { createMaterials } from './materials.js';
 import { createModuleBuilder } from '../geometry/moduleGeometry.js';
+import { mountedPosition } from '../geometry/placement.js';
 import { createEnvironment } from './environment.js';
 import { setupPointer } from './pointer.js';
 import { createAnimation } from './animation.js';
@@ -57,8 +58,12 @@ export function createPlannerScene(stage, store, options = {}) {
     }
     if (a) {
       const e = envelope(a);
-      ctx.selectionBox.box.min.set(...e.min.map((v, i) => v * PITCH + ORIGIN[i]));
-      ctx.selectionBox.box.max.set(...e.max.map((v, i) => v * PITCH + ORIGIN[i]));
+      ctx.selectionBox.box.min.set(
+        ...e.min.map((v, i) => v * PITCH + ORIGIN[i]),
+      );
+      ctx.selectionBox.box.max.set(
+        ...e.max.map((v, i) => v * PITCH + ORIGIN[i]),
+      );
       const box = new THREE.BoxGeometry(0.032, 0.032, 0.032);
       for (const [axis, p, color] of [
         ['x', [e.max[0], (e.min[1] + e.max[1]) / 2, e.min[2]], '#3158e8'],
@@ -95,7 +100,7 @@ export function createPlannerScene(stage, store, options = {}) {
           n.userData.transition = true;
         }
       } else {
-        const nextPosition = position(a);
+        const nextPosition = mountedPosition(a, ctx.items);
         g.position.set(...nextPosition);
         if (
           g.userData.color !== a.color ||
@@ -166,7 +171,11 @@ export function createPlannerScene(stage, store, options = {}) {
     // 调试/自动化专用：把相机放到指定机位（不退出 OrbitControls 管理）。
     // 特写机位会突破交互用的 minDistance，这里按机位距离临时放宽。
     debugCamera: (pos, target) => {
-      const d = Math.hypot(pos[0] - target[0], pos[1] - target[1], pos[2] - target[2]);
+      const d = Math.hypot(
+        pos[0] - target[0],
+        pos[1] - target[1],
+        pos[2] - target[2],
+      );
       ctx.orbit.minDistance = Math.min(1.8, Math.max(0.02, d * 0.9));
       ctx.camera.position.set(pos[0], pos[1], pos[2]);
       ctx.orbit.target.set(target[0], target[1], target[2]);
@@ -186,7 +195,12 @@ export function generatePreview(items, width = 280, height = 180) {
     engine = createPlannerScene(
       stage,
       {
-        getSnapshot: () => ({ items, selected: null, night: false, view: '3d' }),
+        getSnapshot: () => ({
+          items,
+          selected: null,
+          night: false,
+          view: '3d',
+        }),
         subscribe: () => () => {},
       },
       { preview: true },

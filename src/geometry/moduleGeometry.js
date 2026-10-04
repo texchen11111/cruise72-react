@@ -4,20 +4,20 @@ import {
   PITCH,
   mountPoints,
   mountingKey,
-  position,
   cells,
   CLAMP,
   isExhibitType,
   exhibitBackMm,
-  rungSnapShiftMm,
 } from '../core/index.js';
 import { cube, cylinder } from './primitives.js';
 import { buildRhinoPillar, buildRhinoNode } from './models/rhino.js';
 import { buildSurface } from './models/surfaces.js';
+import { mountedPosition } from './placement.js';
 
 const REF = CLAMP.referenceExhibitMm;
-// 模块坐标系中薄板背面的 z：锚点（gz*48+24 mm）+ 软垫面前缘（展板背面贴合面）。
-const exhibitBackZ = (a, gz) => (gz - a.gz) * PITCH + (CLAMP.anchorFromGridZMm + exhibitBackMm()) * 0.001;
+// 模块坐标系中薄板背面的 z：网格锚点 + 固定机械偏置 + 软垫面前缘。
+const exhibitBackZ = (a, gz) =>
+  (gz - a.gz) * PITCH + (CLAMP.anchorFromGridZMm + exhibitBackMm()) * 0.001;
 
 export function createModuleBuilder(ctx) {
   const { mat, textTexture, shared } = ctx.materials;
@@ -25,8 +25,22 @@ export function createModuleBuilder(ctx) {
   const nodeMats = { silver, orange, blue, dark, white };
   // 派生/真实节点：Rhino 装配（背板 + 机芯 + 滑块），锚点携带挂点数据。
   // 夹持状态压板压在展板正面；未夹持（retract）收回为完整立方体。
-  function node(g, x, y, z, { role, thicknessMm, retract, ownerId }, point = null) {
-    buildRhinoNode(g, x, y, z, { role, thicknessMm, retract, ownerId, point, mats: nodeMats });
+  function node(
+    g,
+    x,
+    y,
+    z,
+    { role, thicknessMm, retract, ownerId },
+    point = null,
+  ) {
+    buildRhinoNode(g, x, y, z, {
+      role,
+      thicknessMm,
+      retract,
+      ownerId,
+      point,
+      mats: nodeMats,
+    });
   }
 
   function buildModule(a) {
@@ -36,16 +50,15 @@ export function createModuleBuilder(ctx) {
       colored = mat(a.color),
       [w, h, d] = (a.sizeCells || m.cells).map((v) => v * PITCH);
     g.userData.id = a.id;
-    g.position.set(...position(a));
-    // 格内吸附最近横档：模块整体沿 y 微调（|s| ≤ 12.5 mm），让各挂点背钩
-    // 对准真实横档而不是抽象格点；横档保持 Rhino 工程位置。派生挂点坐标
-    // 相对于模块组，无需逐点改动。
-    g.position.y += rungSnapShiftMm(a, ctx.items || []) * 0.001;
+    g.position.set(...mountedPosition(a, ctx.items));
     let act = null;
     // 薄界面（panel 与四种拓展界面）的派生挂点：板材背面位置由机械层决定。
-    const pts = a.type !== 'block' && m.mount ? mountPoints(a, ctx.items || []) : [];
+    const pts =
+      a.type !== 'block' && m.mount ? mountPoints(a, ctx.items || []) : [];
     const thicknessMm = a.exhibitMm ?? REF;
-    const backZ = pts.length ? exhibitBackZ(a, pts[0].gz) : exhibitBackZ(a, a.gz);
+    const backZ = pts.length
+      ? exhibitBackZ(a, pts[0].gz)
+      : exhibitBackZ(a, a.gz);
     if (a.type === 'pillar') buildRhinoPillar(g, h, nodeMats);
     else if (a.type === 'block')
       node(g, 0, 0, CLAMP.anchorFromGridZMm * 0.001, {
@@ -55,7 +68,15 @@ export function createModuleBuilder(ctx) {
         ownerId: a.id,
       });
     else if (['pegboard', 'mesh', 'metal', 'rope'].includes(a.type)) {
-      buildSurface(g, a.type, w, h, d, { colored, white, silver, dark, orange }, { backZ });
+      buildSurface(
+        g,
+        a.type,
+        w,
+        h,
+        d,
+        { colored, white, silver, dark, orange },
+        { backZ },
+      );
     } else if (a.type === 'panel') {
       // 展板整板夹持（见图1）：背面贴软垫面（锚点 + 33.4 mm），蓝色前压板
       // 背面贴正面（33.4 + t）。导柱随滑块移动、尖端止于板正面并藏于压板后；
@@ -65,27 +86,37 @@ export function createModuleBuilder(ctx) {
       cube(g, w, h, depth, 0, 0, backZ + depth / 2, white);
       const front = new THREE.Mesh(
         new THREE.PlaneGeometry(w - 0.012, h - 0.012),
-        textTexture('ON THE OCEAN', '72+ / 48 mm system'),
+        textTexture('ON THE OCEAN', `72+ / ${PITCH * 1000} mm grid`),
       );
       front.position.set(0, 0, backZ + depth + 0.001);
       g.add(front);
     } else if (a.type === 'acoustic' || a.type === 'sign') {
       const depth = a.type === 'sign' ? 0.025 : 0.025;
-      cube(g, w, h, depth, 0, 0, 0.025, a.type === 'acoustic' ? mat('#829f9e') : white);
+      cube(
+        g,
+        w,
+        h,
+        depth,
+        0,
+        0,
+        0.025,
+        a.type === 'acoustic' ? mat('#829f9e') : white,
+      );
       if (a.type === 'sign') {
         const front = new THREE.Mesh(
           new THREE.PlaneGeometry(w - 0.012, h - 0.012),
-          textTexture('WELCOME', '72+ / 48 mm system'),
+          textTexture('WELCOME', `72+ / ${PITCH * 1000} mm grid`),
         );
         front.position.set(0, 0, 0.025 + depth / 2 + 0.001);
         g.add(front);
       } else
-        for (let i = 1; i < 14; i++)
-          cube(g, 0.002, h - 0.02, 0.002, -w / 2 + i * 0.048, 0, 0.039, dark);
+        for (let x = -w / 2 + PITCH; x < w / 2 - 1e-9; x += PITCH)
+          cube(g, 0.002, h - 0.02, 0.002, x, 0, 0.039, dark);
     } else if (a.type === 'cabinet') {
       cube(g, w, 0.012, d, 0, -h / 2 + 0.006, d / 2, colored);
       cube(g, w, 0.012, d, 0, h / 2 - 0.006, d / 2, colored);
-      for (const x of [-w / 2 + 0.006, w / 2 - 0.006]) cube(g, 0.012, h, d, x, 0, d / 2, colored);
+      for (const x of [-w / 2 + 0.006, w / 2 - 0.006])
+        cube(g, 0.012, h, d, x, 0, d / 2, colored);
       cube(g, w, h, 0.008, 0, 0, 0.004, white);
       cube(g, w - 0.03, 0.006, d - 0.04, 0, -0.025, d / 2, glass);
       cube(g, 0.12, 0.04, 0.12, -0.15, -h / 2 + 0.032, d / 2, white);
@@ -113,7 +144,7 @@ export function createModuleBuilder(ctx) {
           i === 1 ? orange : white,
         );
     } else if (a.type === 'lamp') {
-      cube(g, 0.048, 0.096, 0.016, 0, 0, 0.008, colored);
+      cube(g, PITCH, 2 * PITCH, 0.016, 0, 0, 0.008, colored);
       cylinder(g, 0.012, 0.09, 0, 0, 0.06, silver, 'z');
       const hinge = new THREE.Group();
       hinge.position.set(0, 0, 0.135);
@@ -144,23 +175,54 @@ export function createModuleBuilder(ctx) {
       cube(g, w, h, d, 0, 0, d / 2, colored);
       cube(g, w - 0.024, h * 0.55, 0.004, 0, -0.03, d - 0.001, white);
       for (let i = 0; i < 5; i++)
-        cube(g, w - 0.04, 0.003, 0.002, 0, h / 2 - 0.02 - i * 0.009, d - 0.001, dark);
+        cube(
+          g,
+          w - 0.04,
+          0.003,
+          0.002,
+          0,
+          h / 2 - 0.02 - i * 0.009,
+          d - 0.001,
+          dark,
+        );
       g.userData.particles = [];
-      const pm = new THREE.MeshBasicMaterial({ color: '#78c5cd', transparent: true, opacity: 0.5 });
+      const pm = new THREE.MeshBasicMaterial({
+        color: '#78c5cd',
+        transparent: true,
+        opacity: 0.5,
+      });
       for (let i = 0; i < 10; i++) {
         const q = new THREE.Mesh(new THREE.SphereGeometry(0.003, 6, 6), pm);
         g.add(q);
         g.userData.particles.push(q);
       }
     } else if (a.type === 'rail') {
-      cube(g, w - 0.048, 0.016, 0.016, 0, 0, 0.024, silver);
+      cube(
+        g,
+        w - PITCH,
+        0.016,
+        0.016,
+        0,
+        0,
+        CLAMP.anchorFromGridZMm * 0.001,
+        silver,
+      );
     } else if (a.type === 'tray') {
       cube(g, w, 0.012, d, 0, -h / 2 + 0.006, d / 2, white);
       for (const x of [-w / 2 + 0.006, w / 2 - 0.006])
         cube(g, 0.012, 0.038, d, x, -h / 2 + 0.025, d / 2, colored);
       cube(g, w, 0.038, 0.012, 0, -h / 2 + 0.025, d - 0.006, colored);
-      for (const x of [-w / 2 + 0.024, w / 2 - 0.024])
-        cube(g, 0.016, 0.016, d - 0.048, x, -h / 2 + 0.03, d / 2 + 0.024, silver);
+      for (const x of [-w / 2 + PITCH / 2, w / 2 - PITCH / 2])
+        cube(
+          g,
+          0.016,
+          0.016,
+          d - PITCH,
+          x,
+          -h / 2 + 0.03,
+          d / 2 + PITCH / 2,
+          silver,
+        );
       for (let i = 0; i < 3; i++)
         cube(
           g,
@@ -189,10 +251,10 @@ export function createModuleBuilder(ctx) {
       face.add(book);
       g.userData.book = book;
       g.add(face);
-      for (const x of [-w / 2 + 0.024, w / 2 - 0.024])
+      for (const x of [-w / 2 + PITCH / 2, w / 2 - PITCH / 2])
         cube(g, 0.018, 0.018, 0.19, x, -0.13, 0.13, silver);
     } else if (a.type === 'worktop') {
-      // Reserved 480 mm height/depth contains every intermediate fold angle.
+      // Reserved 10-cell height/depth contains every intermediate fold angle.
       act = new THREE.Group();
       act.position.set(0, -h / 2 + 0.03, 0.02);
       cube(act, w, 0.022, 0.432, 0, 0, 0.216, colored);
@@ -233,8 +295,14 @@ export function createModuleBuilder(ctx) {
               p,
             );
         }
-      } else if (ctx.preview && !ctx.items.some((item) => item.type === 'pillar')) {
-        const xs = m.mount === 4 || a.type === 'rail' ? [-w / 2 + 0.024, w / 2 - 0.024] : [0];
+      } else if (
+        ctx.preview &&
+        !ctx.items.some((item) => item.type === 'pillar')
+      ) {
+        const xs =
+          m.mount === 4 || a.type === 'rail'
+            ? [-w / 2 + 0.024, w / 2 - 0.024]
+            : [0];
         const ys = a.type === 'rail' ? [0] : [-h / 2 + 0.024, h / 2 - 0.024];
         for (const x of xs)
           for (const y of ys)
@@ -271,7 +339,9 @@ export function createModuleBuilder(ctx) {
       if (o.geometry && !o.geometry.userData.rhinoShared) o.geometry.dispose();
       if (
         o.material &&
-        !Object.values({ silver, orange, dark, white, glass }).includes(o.material)
+        !Object.values({ silver, orange, dark, white, glass }).includes(
+          o.material,
+        )
       ) {
         o.material.map?.dispose();
         o.material.dispose();

@@ -23,7 +23,7 @@ export const RHINO_V3 = {
     // 横档中心距段底 12.5 mm，全程 25 mm 连续（源文件两段 600 mm 顶点级周期
     // 重复）。横档始终渲染在 Rhino 工程位置，不做任何相位偏移；节点-横档的
     // y 向对位由格内吸附（core/mount/rungs.js rungSnapShiftMm，minimax ≤ 12.5 mm）
-    // 在模块层完成，48/25 互质偏差的分析与数据见该文件注释。
+    // 在模块层完成；50 mm 网格的固定相位补偿见该文件注释。
     rungCountPerSegment: 24,
   },
 };
@@ -88,7 +88,8 @@ function addRoleMeshes(parent, role, mats) {
 // 从包络底面起算，顶段允许超出包络（通长到顶），工程尺寸不做缩放。
 export function buildRhinoPillar(g, hMeters, mats) {
   const segmentHeight = RHINO_V3.pillar.segmentHeightMm * MM;
-  const count = Math.max(1, Math.ceil(hMeters / segmentHeight));
+  // 忽略浮点尾差，避免 48 × 0.05 m 被误判成需要第 5 段。
+  const count = Math.max(1, Math.ceil(hMeters / segmentHeight - 1e-9));
   const bottom = -hMeters / 2;
   for (let i = 0; i < count; i++) {
     const segment = new THREE.Group();
@@ -104,7 +105,7 @@ export function buildRhinoPillar(g, hMeters, mats) {
 }
 
 // 节点装配：背板（挂钩，始终向下）+ 机芯（允许转向）+ 滑块（随厚度整体移动）。
-// 锚点是无几何 Object3D，世界位置 = (格中心 x, 格中心 y, gz*48+24 mm)，
+// 锚点是无几何 Object3D，世界位置 = (格中心 x, 格中心 y, 网格 z + 24 mm)，
 // 测试与导出都以此对齐。上挂点机芯绕 z 轴转 180°，背板不转。
 // retract = true 时滑块完全收回（压板与机芯前面齐平，节点呈完整立方体），
 // 用于不夹持平面展具、只连接其他模块的节点。

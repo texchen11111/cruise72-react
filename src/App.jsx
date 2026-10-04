@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePlanner } from './hooks/usePlanner.js';
-import { MODULES as M, clone } from './core/index.js';
+import { MODULES as M, GRID, PITCH, clone } from './core/index.js';
 import { Catalog } from './components/Catalog.jsx';
 import { Inspector } from './components/Inspector.jsx';
 import { Stage } from './components/Stage.jsx';
@@ -25,7 +25,7 @@ export default function App({ store }) {
         type: 'application/json',
       }),
     );
-    download(url, '邮轮72变_48mm网格配置.json');
+    download(url, `邮轮72变_${PITCH * 1000}mm网格配置.json`);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     store.toast('格坐标、占位和功能清单已导出');
   };
@@ -92,7 +92,7 @@ export default function App({ store }) {
           72+
         </a>
         <div className="headtitle">
-          邮轮72变<small>48 MM NODE SYSTEM</small>
+          邮轮72变<small>{PITCH * 1000} MM NODE SYSTEM</small>
         </div>
         <div className="headlinks">
           <button
@@ -160,7 +160,7 @@ export default function App({ store }) {
                   </dd>
                 </dl>
                 <p className="workspace-footnote">
-                  48 mm / 格 · 60 × 60 × 24
+                  {PITCH * 1000} mm / 格 · {GRID.join(' × ')}{' '}
                   格。场景效果图展示氛围，具体尺寸以配置为准。
                 </p>
               </div>
